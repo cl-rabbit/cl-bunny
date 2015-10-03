@@ -1,0 +1,11 @@
+*emb-next*
+pkg/*
+tmp
+ts
+log
+dump
+*~
+.#*
+#*
+*#
+
