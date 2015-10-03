@@ -11,7 +11,8 @@
     (with-channel ()
       (amqp-queue-declare "test-queue")
       (with-consumers
-          ((("test-queue" :no-ack t)
-             (lambda (message)
-               (format t "Got message ~a" (babel:octets-to-string (message-body message))))))
-        (consume)))))
+          (("test-queue"
+            (lambda (message)
+              (format t "Got message ~a" (babel:octets-to-string (message-body message))))
+             :type :sync))
+        (consume :one-shot t)))))

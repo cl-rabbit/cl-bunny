@@ -6,18 +6,27 @@
 
 (defvar *connection*)
 
+(defun check-connection-alive (connection)
+  (when (and connection
+             (slot-boundp connection 'connection-thread)
+             (bt:thread-alive-p (connection-thread connection)))
+    connection))
+
 (defun get-connection-from-pool (spec)
-  (bt:with-lock-held (*connections-pool-lock*)
-    (gethash spec *connections-pool*)))
+  (check-connection-alive (gethash spec *connections-pool*)))
 
 (defun add-connection-to-pool (spec connection)
+  (setf (gethash spec *connections-pool*)
+        connection))
+
+(defun remove-connection-from-pool (connection)
   (bt:with-lock-held (*connections-pool-lock*)
-    (setf (gethash spec *connections-pool*)
-          connection)))
+    (remhash (connection-spec connection) *connections-pool*)))
 
 (defun find-or-create-connection (spec)
-  (or (get-connection-from-pool spec)
-      (create-new-connection spec)))
+  (bt:with-lock-held (*connections-pool-lock*)
+    (or (get-connection-from-pool spec)
+        (create-new-connection spec))))
 
 (defun create-new-connection (spec)
   (let ((connection (make-connection-object spec)))
@@ -78,20 +87,32 @@
          (values-list ,return)))))
 
 (defun make-connection-object (spec)
-  (let ((connection  (make-instance 'connection :spec (make-connection-spec spec)
+  (let ((connection (make-instance 'connection :spec (make-connection-spec spec)
                                                 :connection (cl-rabbit:new-connection))))
     (setup-execute-in-connection-lambda connection)
     connection))
 
-(defmacro with-connection (spec &body body)
-  `(let ((*connection* (find-or-create-connection ,spec)))
-     ,@body))
+(defun parse-with-connection-params (params)
+  (etypecase params
+    (string (list params :one-shot nil))
+    (symbol (list params :one-shot nil))
+    (list params)))
+
+(defmacro with-connection (params &body body)
+  (destructuring-bind (spec &key one-shot) (parse-with-connection-params params)
+    `(let ((*connection* (if ,one-shot
+                             (create-new-connection ,spec)
+                             (find-or-create-connection ,spec))))
+         (unwind-protect
+              (progn
+                ,@body)
+           (when ,one-shot
+             (connection-close))))))
 
 (defun connection-run (connection)
   (connection-start connection)
-  (bt:with-lock-held (*connections-pool-lock*)
-    (setf (slot-value connection 'connection-thread)
-          (bt:make-thread (lambda () (connection-loop connection))))))
+  (setf (slot-value connection 'connection-thread)
+        (bt:make-thread (lambda () (connection-loop connection)))))
 
 (defun connection-start (connection)
   (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
@@ -102,7 +123,6 @@
                                 (connection-spec-password spec))))
 
 (defun wait-for-frame (connection)
-  (print "qwe")
   (log:trace "Waiting for frame on async connection: ~s" connection)
   (with-slots (channels cl-rabbit-connection) connection
     ;;
@@ -149,9 +169,16 @@
                    (cl-rabbit::frames-enqueued cl-rabbit-connection))
             do (wait-for-frame connection)
             else
-            do (iolib:event-dispatch event-base :one-shot t)))
-      (eventfd.close control-fd))))
+            do (iolib:event-dispatch event-base :one-shot t))
+        (stop-connection ()          
+          (eventfd.close control-fd)
+          (cl-rabbit:destroy-connection cl-rabbit-connection))))))
 
+(defun connection-close (&optional (connection *connection*))
+  (execute-in-connection-thread (connection)
+    (error 'stop-connection))
+  (bt:join-thread (connection-thread connection))
+  (remove-connection-from-pool connection))
 
 (defun allocate-and-open-new-channel (connection)
   (let* ((channel (make-channel connection)))

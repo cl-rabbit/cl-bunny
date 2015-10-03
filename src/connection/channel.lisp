@@ -13,7 +13,10 @@
                :reader channel-number)
    (open-p     :type boolean
                :initform nil
-               :accessor channel-open-p)))
+               :accessor channel-open-p)
+   (consumers :type hash-table
+              :initform (make-hash-table :test #'equal)
+              :reader channel-consumers)))
 
 (defvar *channel*)
 (defconstant +max-channels+ 65535)
@@ -23,4 +26,8 @@
                           :number number))
 
 (defun channel-consume-message (channel message)
-  (mailbox-send-message (channel-mailbox channel) message))
+  (if-let ((consumer (find-message-consumer channel message)))
+    (if (eq :sync (consumer-type consumer))
+        (mailbox-send-message (channel-mailbox channel) message)
+        (execute-consumer consumer message))    
+    (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))

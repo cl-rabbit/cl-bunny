@@ -32,7 +32,43 @@
 (defun amqp-queue-declare (name &rest args &key passive durable exclusive auto-delete arguments (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:queue-declare (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel) :queue name) args))))
+    (apply #'cl-rabbit:queue-declare
+           (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel) :queue name)
+                   args))))
+
+(defun amqp-queue-delete (name &rest args &key if-unused if-empty (channel *channel*))
+  (remf args :channel)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (apply #'cl-rabbit:queue-delete
+           (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel)name)
+                   args))))
+
+(defun amqp-queue-bind (name &rest args &key exchange routing-key arguments (channel *channel*))
+  (remf args :channel)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (apply #'cl-rabbit:queue-bind (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel) :queue name) args))))
+
+(defun amqp-exchange-declare (name &rest args &key (type "direct") (channel *channel*) passive durable auto-delete internal arguments)
+  (remf args :channel)
+  (remf args :type)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (apply #'cl-rabbit:exchange-declare
+           (append (list (connection-cl-rabbit-connection (channel-connection channel))
+                         (channel-number channel)
+                         name
+                         type)
+                   args)))
+  name)
+
+(defun amqp-exchange-delete (name &rest args &key if-unused (channel *channel*))
+  (remf args :channel)
+  (remf args :type)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (apply #'cl-rabbit:exchange-delete
+           (append (list (connection-cl-rabbit-connection (channel-connection channel))
+                         (channel-number channel)
+                         name)
+                   args))))
 
 (defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate properties
                                       (encoding :utf-8)
@@ -41,11 +77,19 @@
   (execute-in-connection-thread-sync ((channel-connection channel))
     (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel) :body body) args))))
 
-(defun amqp-basic-consume (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
+(defun amqp-basic-consume (queue &rest args &key consumer-tag no-local (no-ack t) exclusive arguments
                                              (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
     (apply #'cl-rabbit:basic-consume (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-number channel) queue) args))))
+
+(defun amqp-basic-cancel (consumer-tag &rest args &key no-wait (channel *channel*))
+  (remf args :channel)
+  (remf args :type)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (cl-rabbit:basic-cancel (connection-cl-rabbit-connection (channel-connection channel))
+                            (channel-number channel)
+                            consumer-tag))))
 
 ;; (defclass connection ()
 ;;   ((amqp-connection :initarg :amqp-connection-state)

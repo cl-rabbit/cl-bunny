@@ -8,8 +8,15 @@
            #:message-body
 
            #:amqp-queue-declare
+           #:amqp-queue-bind
+           #:amqp-queue-delete
+
+           #:amqp-exchange-declare
+           #:amqp-exchange-delete
+           
            #:amqp-basic-publish
            #:amqp-basic-consume
            
-           #:consume))
+           #:consume
+           #:subscribe))
 

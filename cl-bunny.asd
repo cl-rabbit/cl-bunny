@@ -16,7 +16,8 @@
                "cl-rabbit"
                "quri"
                "safe-queue"
-               "eventfd")
+               "eventfd"
+               "log4cl")
   :serial t
   :components ((:file "package")
                (:file "src/support/int-allocator")
@@ -26,4 +27,5 @@
                (:file "src/connection/spec")
                (:file "src/connection/channel")
                (:file "src/connection/connection")
-               (:file "src/consumer")))
+               (:file "src/consumer")
+               (:file "src/amqp")))
