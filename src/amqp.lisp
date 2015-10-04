@@ -70,6 +70,7 @@
                          name)
                    args))))
 
+;; TODO: detect string, set encoding/content type appropriately. use this info to decode message body
 (defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate properties
                                       (encoding :utf-8)
                                       (channel *channel*))
@@ -89,7 +90,7 @@
   (execute-in-connection-thread-sync ((channel-connection channel))
     (cl-rabbit:basic-cancel (connection-cl-rabbit-connection (channel-connection channel))
                             (channel-number channel)
-                            consumer-tag))))
+                            consumer-tag)))
 
 ;; (defclass connection ()
 ;;   ((amqp-connection :initarg :amqp-connection-state)
