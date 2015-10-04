@@ -6,10 +6,13 @@
 
 (defvar *connection*)
 
+(defun connection-alive-p (connection)
+  (and connection
+       (slot-boundp connection 'connection-thread)
+       (bt:thread-alive-p (connection-thread connection))))
+
 (defun check-connection-alive (connection)
-  (when (and connection
-             (slot-boundp connection 'connection-thread)
-             (bt:thread-alive-p (connection-thread connection)))
+  (when (connection-alive-p connection)
     connection))
 
 (defun get-connection-from-pool (spec)
@@ -47,7 +50,7 @@
    (channels :type hash-table
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
-   
+
    (event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
 
    (control-fd :initform (eventfd:eventfd.new 0))
@@ -74,21 +77,22 @@
            (,condition (bt:make-condition-variable))
            (,return nil)
            (,connection% ,connection))
-       (bt:with-lock-held (,lock)
-         (funcall (connection-lambda ,connection)
-                  (lambda (&aux (*connection* ,connection%))
-                    (bt:with-lock-held (,lock)
-                      (setf ,return
-                            (multiple-value-list 
-                             (unwind-protect
-                                  (progn ,@body)
-                               (bt:condition-notify ,condition)))))))
-         (bt:condition-wait ,condition ,lock)
-         (values-list ,return)))))
+       (when (connection-alive-p ,connection)
+         (bt:with-lock-held (,lock)
+           (funcall (connection-lambda ,connection)
+                    (lambda (&aux (*connection* ,connection%))
+                      (bt:with-lock-held (,lock)
+                        (setf ,return
+                              (multiple-value-list
+                               (unwind-protect
+                                    (progn ,@body)
+                                 (bt:condition-notify ,condition)))))))
+           (bt:condition-wait ,condition ,lock)
+           (values-list ,return))))))
 
 (defun make-connection-object (spec)
   (let ((connection (make-instance 'connection :spec (make-connection-spec spec)
-                                                :connection (cl-rabbit:new-connection))))
+                                               :connection (cl-rabbit:new-connection))))
     (setup-execute-in-connection-lambda connection)
     connection))
 
@@ -103,11 +107,11 @@
     `(let ((*connection* (if ,one-shot
                              (create-new-connection ,spec)
                              (find-or-create-connection ,spec))))
-         (unwind-protect
-              (progn
-                ,@body)
-           (when ,one-shot
-             (connection-close))))))
+       (unwind-protect
+            (progn
+              ,@body)
+         (when ,one-shot
+           (connection-close))))))
 
 (defun connection-run (connection)
   (connection-start connection)
@@ -127,12 +131,12 @@
   (with-slots (channels cl-rabbit-connection) connection
     ;;
     (handler-bind ((cl-rabbit:rabbitmq-library-error
-                    (lambda (condition)
-                      (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
-                                :amqp-unexpected-frame)
-                        (log:warn "Got unexpected frame")
-                        ;; (process-unexpected-frame cl-rabbit-connection)
-                        ))))
+                     (lambda (condition)
+                       (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
+                                 :amqp-unexpected-frame)
+                         (log:warn "Got unexpected frame")
+                         ;; (process-unexpected-frame cl-rabbit-connection)
+                         ))))
       ;;
       (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
         (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
@@ -170,14 +174,15 @@
             do (wait-for-frame connection)
             else
             do (iolib:event-dispatch event-base :one-shot t))
-        (stop-connection ()          
+        (stop-connection ()
           (eventfd.close control-fd)
           (cl-rabbit:destroy-connection cl-rabbit-connection))))))
 
 (defun connection-close (&optional (connection *connection*))
-  (execute-in-connection-thread (connection)
-    (error 'stop-connection))
-  (bt:join-thread (connection-thread connection))
+  (when (connection-alive-p connection)
+    (execute-in-connection-thread (connection)
+      (error 'stop-connection))
+    (bt:join-thread (connection-thread connection)))
   (remove-connection-from-pool connection))
 
 (defun allocate-and-open-new-channel (connection)
