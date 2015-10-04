@@ -19,7 +19,7 @@
               :reader channel-consumers)))
 
 (defvar *channel*)
-(defconstant +max-channels+ 65535)
+(defconstant +max-channels+ 320)
 
 (defun make-channel (connection &optional (number (next-channel-id (connection-channel-id-allocator connection))))
   (make-instance 'channel :connection connection
