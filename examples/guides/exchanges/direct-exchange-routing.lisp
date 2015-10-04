@@ -13,12 +13,14 @@
         (amqp-queue-bind q2 :exchange x :routing-key "watermark")
 
         (subscribe q1 (lambda (message)
-                        (log:info "[consumer] ~a received a 'resize' message: ~a" q1 (babel:octets-to-string (message-body message)))))
+                        (log:info "[consumer] ~a received a 'resize' message: ~a"
+                                  q1 (babel:octets-to-string (message-body message)))))
         (subscribe q2 (lambda (message)
-                        (log:info "[consumer] ~a received a 'watermark' message: ~a" q2 (babel:octets-to-string (message-body message)))))
+                        (log:info "[consumer] ~a received a 'watermark' message: ~a"
+                                  q2 (babel:octets-to-string (message-body message)))))
 
         (amqp-basic-publish (format nil "~a" (random 10)) :exchange x
-                                                       :routing-key "resize")
+                                                          :routing-key "resize")
         (amqp-basic-publish (format nil "~a" (random 15)) :exchange x
                                                           :routing-key "watermark")
         
