@@ -17,7 +17,8 @@
                "quri"
                "safe-queue"
                "eventfd"
-               "log4cl")
+               "log4cl"
+               "cl-interpol")
   :serial t
   :components ((:file "package")
                (:file "src/support/int-allocator")
