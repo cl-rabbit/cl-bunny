@@ -1,7 +1,5 @@
 (in-package :cl-bunny.examples)
 
-(cl-interpol:enable-interpol-syntax)
-
 (defun mandatory-messages ()
   (log:info "=> Publishing messages as mandatory")
 
@@ -19,7 +17,7 @@
                        (log:info "~a received ~a" q (babel:octets-to-string (message-body message)))))
 
         (publish x "This will NOT be returned" :mandatory t :routing-key q)
-        (publish x "This will be returned" :mandatory t :routing-key #?"wefvvtrw${(random 10)}")        
+        (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))        
 
         (log:info "Waiting...")
         (sleep 3)
