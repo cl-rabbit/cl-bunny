@@ -32,6 +32,7 @@
            
            #:default-exchange
            #:topic-exchange
+           #:fanout-exchange
            #:publish          
            #:consume
            #:subscribe))

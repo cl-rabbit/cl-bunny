@@ -57,3 +57,9 @@
          (append (list  name
                         :type "topic")
                  args)))
+
+(defun fanout-exchange (name &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+  (apply #'amqp-exchange-declare
+         (append (list  name
+                        :type "fanout")
+                 args)))
