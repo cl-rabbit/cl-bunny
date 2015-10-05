@@ -5,6 +5,13 @@
            #:with-channel
            #:with-consumers
 
+           #:message-channel
+           #:message-consumer-tag
+           #:message-delivery-tag
+           #:message-redelivered
+           #:message-exchange
+           #:message-routing-key
+           #:message-properties
            #:message-body
 
            #:amqp-queue-declare
@@ -18,9 +25,13 @@
            #:amqp-basic-consume
 
            ;; high-level interfaces
-           #:exchange-on-return-callback ;; wtf?
+           #:exchange-on-return-callback
+
+           #:queue.declare
+           #:queue.bind
            
            #:default-exchange
+           #:topic-exchange
            #:publish          
            #:consume
            #:subscribe))
