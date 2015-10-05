@@ -50,4 +50,10 @@
   (or
    (get-registered-exchange channel "")
    (register-exchange channel (make-instance 'exchange :channel channel
-                                               :name ""))))
+                                                       :name ""))))
+
+(defun topic-exchange (name &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+  (apply #'amqp-exchange-declare
+         (append (list  name
+                        :type "topic")
+                 args)))
