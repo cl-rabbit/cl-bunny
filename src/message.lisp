@@ -10,6 +10,9 @@
    (delivery-tag :type integer
                  :initarg :delivery-tag
                  :reader message-delivery-tag)
+   (redelivered  :type boolean
+                 :initarg :redelivered
+                 :reader message-redelivered-p)
    (exchange     :type string
                  :initarg :exchange
                  :reader message-exchange)
@@ -23,11 +26,20 @@
                  :initarg :body
                  :reader message-body)))
 
+(defclass returned-message (message)
+  ((reply-code :type fixnum
+               :initarg :reply-code
+               :reader returned-message-reply-code)
+   (reply-text :type string
+               :initarg :reply-text
+               :reader returned-message-reply-text)))
+
 (defun create-message (channel envelope)
   (make-instance 'message
                  :channel channel
                  :consumer-tag (cl-rabbit:envelope/consumer-tag envelope)
                  :delivery-tag (cl-rabbit:envelope/delivery-tag envelope)
+                 :redelivered (cl-rabbit:envelope/redelivered envelope)
                  :exchange (cl-rabbit:envelope/exchange envelope)
                  :routing-key (cl-rabbit:envelope/routing-key envelope)
                  :properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
