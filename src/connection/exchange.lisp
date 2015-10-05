@@ -11,17 +11,24 @@
               :initform nil
               :accessor exchange-on-return-callback)))
 
+(defmethod exchange-name ((exchange string))
+  exchange)
+
+(defmethod exchange-channel ((exchange string))
+  nil)
+
 (defun publish (exchange payload &key routing-key mandatory immediate properties
-                                  (encoding :utf-8))
+                                  (encoding :utf-8)
+                                  (channel *channel*))
   (amqp-basic-publish payload :exchange (exchange-name exchange)
                               :routing-key routing-key
                               :mandatory mandatory
                               :immediate immediate
                               :properties properties
                               :encoding encoding
-                              :channel (exchange-channel exchange)))
-
-
+                              :channel (or (exchange-channel exchange)
+                                           channel))
+  exchange)
 
 
 
