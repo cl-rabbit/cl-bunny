@@ -126,29 +126,96 @@
                                 (connection-spec-login spec)
                                 (connection-spec-password spec))))
 
+(defun process-return-method (state method channel)
+  (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
+    (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
+    (let* ((basic-return
+             (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                        '(:struct cl-rabbit::amqp-basic-return-t)))
+           (message (make-instance 'returned-message
+                                   :channel channel
+                                   :reply-code (getf basic-return 'cl-rabbit::reply-code)
+                                   :reply-text (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::reply-text))
+                                   :exchange (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::exchange))
+                                   :routing-key (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::routing-key))
+                                   :properties (cl-rabbit::load-properties-to-alist
+                                                (cffi:foreign-slot-value message
+                                                                         '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties))
+                                   :body (cl-rabbit::bytes->array
+                                          (cffi:foreign-slot-value message
+                                                                   '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))
+      (let* ((exchange (get-registered-exchange channel (message-exchange message)))
+             (callback (or (and exchange
+                                (exchange-on-return-callback exchange))
+                           (exchange-on-return-callback channel))))
+        (if callback
+            (funcall callback message)
+            (log:warn "Got unhandled returned message"))))))
+
+;;; see https://github.com/alanxz/rabbitmq-c/blob/master/examples/amqp_consumer.c
+(defun process-unexpected-frame (connection)
+  (let ((cl-rabbit-connection (connection-cl-rabbit-connection connection))
+        (channels (connection-channels connection)))
+    (cl-rabbit::with-state (state cl-rabbit-connection)
+      (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
+        (let* ((result (cl-rabbit::amqp-simple-wait-frame state frame))
+               (result-tag (cl-rabbit::verify-status result)))
+          (log:debug "Unexpected frame - channel: ~a, type: ~a"
+                     (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel)
+                     (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type))
+          (when (= cl-rabbit::+amqp-frame-method+
+                   (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type))
+            (let* ((channel-id
+                     (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel))
+                   (method
+                     (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::payload-method))
+                   (method-id
+                     (getf method 'cl-rabbit::id)))
+              (labels ((warn-nonexistent-channel ()
+                         (log:warn "Message received for closed channel: ~a" channel-id)))
+                (if-let ((channel (gethash channel-id channels)))
+                  (if (channel-open-p channel)
+                      (case method-id
+                        (#.cl-rabbit::+amqp-basic-ack-method+ (error "Ack not supported yet"))
+                        (#.cl-rabbit::+amqp-basic-return-method+
+                         ;;(cl-rabbit::amqp-put-back-frame state frame)
+                         (log:debug "Got return method, reading message")
+                         (process-return-method state method channel))
+                        (#.cl-rabbit::+amqp-channel-close-method+ (error "Channel close not supported yet"))
+                        (#.cl-rabbit::+amqp-connection-close-method+ (error "Connection close not supported yet"))
+                        (otherwise (error "Unsupported unexpected method ~a" method-id)))
+                      ;; ELSE: We won't deliver messages to a closed channel
+                      (log:warn "Incoming message on closed channel: ~s" channel))
+                  ;; ELSE: Unused channel
+                  (warn-nonexistent-channel)))))
+          result-tag)))))
+
 (defun wait-for-frame (connection)
   (log:trace "Waiting for frame on async connection: ~s" connection)
   (with-slots (channels cl-rabbit-connection) connection
-    ;;
-    (handler-bind ((cl-rabbit:rabbitmq-library-error
-                     (lambda (condition)
-                       (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
-                                 :amqp-unexpected-frame)
-                         (log:warn "Got unexpected frame")
-                         ;; (process-unexpected-frame cl-rabbit-connection)
-                         ))))
-      ;;
-      (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
-        (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
-          (labels ((warn-nonexistent-channel ()
-                     (log:warn "Message received for closed channel: ~a" channel-id)))
-            (if-let ((channel (gethash channel-id channels)))
-              (if (channel-open-p channel)
-                  (channel-consume-message channel (create-message channel envelope))
-                  ;; ELSE: We won't deliver messages to a closed channel
-                  (log:warn "Incoming message on closed channel: ~s" channel))
-              ;; ELSE: Unused channel
-              (warn-nonexistent-channel))))))))
+    (tagbody
+       (handler-bind ((cl-rabbit:rabbitmq-library-error
+                        (lambda (condition)
+                          (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
+                                    :amqp-status-unexpected-state)
+                            (go unexpected-frame)))))
+         ;;
+         (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
+           (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
+             (labels ((warn-nonexistent-channel ()
+                        (log:warn "Message received for closed channel: ~a" channel-id)))
+               (if-let ((channel (gethash channel-id channels)))
+                 (if (channel-open-p channel)
+                     (channel-consume-message channel (create-message channel envelope))
+                     ;; ELSE: We won't deliver messages to a closed channel
+                     (log:warn "Incoming message on closed channel: ~s" channel))
+                 ;; ELSE: Unused channel
+                 (warn-nonexistent-channel))))
+           (go exit)))
+     unexpected-frame
+       (log:debug "Got unexpected frame")
+       (process-unexpected-frame connection)
+     exit)))
 
 (defun connection-loop (connection)
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
