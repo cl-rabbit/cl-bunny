@@ -63,9 +63,9 @@
     (loop for message = (mailbox-receive-message mailbox :timeout timeout)
           while message
           do
-             (progn (dispatch-consumed-message channel message)
-                    (when one-shot
-                      (return))))))
+             (dispatch-consumed-message channel message)
+             (when one-shot
+               (return)))))
 
 (defun subscribe (queue fn &rest args &key (type :async) consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (remf args :type)
