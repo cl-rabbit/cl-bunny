@@ -1,0 +1,19 @@
+(in-package :cl-bunny)
+
+;; maybe there should be queue object with its own mailbox?
+
+(defun queue.declare (name &key passive durable exclusive auto-delete arguments (channel *channel*))
+  (amqp-queue-declare name :passive passive
+                           :durable durable
+                           :exclusive exclusive
+                           :auto-delete auto-delete
+                           :arguments arguments
+                           :channel channel)
+  name)
+
+(defun queue.bind (queue exchange &key routing-key arguments (channel *channel*))
+  (amqp-queue-bind queue :exchange exchange
+                         :routing-key routing-key
+                         :arguments arguments
+                         :channel channel)
+  queue)
