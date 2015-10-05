@@ -26,6 +26,7 @@
                (:file "src/conditions")
                (:file "src/message")
                (:file "src/connection/spec")
+               (:file "src/connection/exchange")
                (:file "src/connection/channel")
                (:file "src/connection/connection")
                (:file "src/consumer")
