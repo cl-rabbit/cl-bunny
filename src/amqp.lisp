@@ -91,39 +91,3 @@
     (cl-rabbit:basic-cancel (connection-cl-rabbit-connection (channel-connection channel))
                             (channel-id channel)
                             consumer-tag)))
-
-;; (defclass connection ()
-;;   ((amqp-connection :initarg :amqp-connection-state)
-;;    (channel-id-allocator :initarg :channel-id-allocator)))
-
-;; (defmacro with-amqp-connection ((name connection) &body body)
-;;   `(let ((,name (slot-value ,connection 'amqp-connection)))
-;;      ,@body))
-
-;; (defun amqp-get-channel-max (amqp-connection)
-;;   (cl-rabbit::amqp-get-channel-max amqp-connection))
-
-;; (defun amqp-channel-open (channel-id &key (connection *connection*))
-;;   (with-amqp-connection (amqp-conneciton conneciton)
-;;     (cl-rabbit:channel-open amqp-conneciton
-;;                             channel-id)))
-
-;; (defun amqp-channel-close (channel-id &key (code cl-rabbit:+amqp-reply-success+) (connection *connection*))
-;;   (with-amqp-connection (amqp-conneciton connection)
-;;     (cl-rabbit:channel-close amqp-conneciton channel-id :code code)))
-
-
-
-;; (defun amqp-queue-declare (name &rest args &key passive durable exclusive auto-delete arguments (connection *connection*) (channel *channel*))
-;;   (remf args :connection)
-;;   (remf args :channel)
-;;   (with-amqp-connection (amqp-connection connection)
-;;     (apply #'cl-rabbit:queue-declare (append (list amqp-connection channel :queue name) args))))
-
-;; (defun amqp-publish (body &rest args &key (exchange "") routing-key mandatory immediate properties
-;;                                  (encoding :utf-8)
-;;                                  (connection *connection*) (channel *channel*))
-;;   (remf args :connection)
-;;   (remf args :channel)
-;;   (with-amqp-connection (amqp-connection connection)
-;;     (apply #'cl-rabbit:basic-publish (append (list amqp-connection channel :body body) args))))
