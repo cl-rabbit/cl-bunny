@@ -16,7 +16,12 @@
            
            #:amqp-basic-publish
            #:amqp-basic-consume
+
+           ;; high-level interfaces
+           #:exchange-on-return-callback ;; wtf?
            
+           #:default-exchange
+           #:publish          
            #:consume
            #:subscribe))
 
