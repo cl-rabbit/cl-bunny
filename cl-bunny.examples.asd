@@ -16,6 +16,8 @@
   :serial t
   :components ((:file "examples/package")
                (:file "examples/guides/getting-started/weathr")
+               (:file "examples/guides/getting-started/blabbr")
+               (:file "examples/guides/getting-started/hello-world")
                (:file "examples/guides/exchanges/direct-exchange-routing")
                (:file "examples/guides/exchanges/fanout-exchange-routing")
                (:file "examples/guides/exchanges/headers-exchange-routing")
