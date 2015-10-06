@@ -37,7 +37,7 @@
   channel)
 
 (defun (setf channel-prefetch) (value channel &key global)
-  (amqp-basic-qos 0 value :global global :channel channel))
+  (amqp-basic-qos value :global global :channel channel))
 
 
 (defun channel-consume-message (channel message &key return)
