@@ -70,7 +70,7 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
                                             ("x-match" . "any"))))))
       (subscribe q1 (lambda (message)
                       (log:info "~a received ~a"
-                                 q1 (babel:octets-to-string (message-body message)))))
+                                q1 (babel:octets-to-string (message-body message)))))
 
       (subscribe q2 (lambda (message)
                       (log:info "~a received ~a"
@@ -91,6 +91,11 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
 
 #### More?
 More examples including can be found [here](examples)
+
+## Special Thanks To
+* [Elias Mårtenson](https://github.com/lokedhs) for [cl-rabbit](https://github.com/lokedhs/cl-rabbit)
+* [Ruby AMQP Team](https://github.com/ruby-amqp) for [bunny](https://github.com/ruby-amqp/bunny) and stuff
+* [Christophe Rhodes](http://christophe.rhodes.io/) for [pipe](http://christophe.rhodes.io/notes/blog/posts/2014/code_walking_for_pipe_sequencing/) macro
 
 ## Authors
 * Ilya Khaprov <ilya.khaprov@publitechs.com>
