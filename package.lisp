@@ -48,6 +48,7 @@
            #:topic-exchange
            #:fanout-exchange
            #:direct-exchange
+           #:headers-exchange
            #:publish          
            #:consume
            #:subscribe))

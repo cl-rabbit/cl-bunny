@@ -77,3 +77,9 @@
          (append (list  name
                         :type "fanout")
                  args)))
+
+(defun headers-exchange (name &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+  (apply #'amqp-exchange-declare
+         (append (list  name
+                        :type "headers")
+                 args)))
