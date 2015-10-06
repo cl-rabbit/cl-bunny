@@ -80,7 +80,7 @@
                                                   (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:basic-publish (append
+    (apply #'cl-rabbit:basic-qos (append
                                       (list
                                        (connection-cl-rabbit-connection (channel-connection channel))
                                        (channel-id channel)
@@ -89,8 +89,8 @@
 
 ;; TODO: detect string, set encoding/content type appropriately. use this info to decode message body
 (defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate properties
-                                      (encoding :utf-8)
-                                      (channel *channel*))
+                                            (encoding :utf-8)
+                                            (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
     (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :body body) args))))
@@ -114,3 +114,17 @@
                           (channel-id channel)
                           consumer-tag))
 
+(defun amqp-basic-ack (delivery-tag &rest args &key multiple (channel *channel*))
+  (remf args :channel)
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (cl-rabbit:basic-ack (connection-cl-rabbit-connection (channel-connection channel))
+                         (channel-id channel)
+                         delivery-tag
+                         :multiple multiple)))
+
+(defun amqp-basic-ack-async (delivery-tag &rest args &key multiple (channel *channel*))
+  (remf args :channel)
+  (cl-rabbit:basic-ack (connection-cl-rabbit-connection (channel-connection channel))
+                       (channel-id channel)
+                       delivery-tag
+                       :multiple multiple))
