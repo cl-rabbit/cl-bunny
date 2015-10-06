@@ -267,14 +267,16 @@
 
 (defmacro with-channel (params &body body)
   (destructuring-bind (channel &key close) (parse-with-channel-params params)
-    (with-gensyms (allocated-p)
-      `(multiple-value-bind (*channel* ,allocated-p) (if ,channel
-                                                         ,channel
-                                                         (values
-                                                          (allocate-and-open-new-channel *connection*)
-                                                          t))
-         (unwind-protect
-              (progn
-                ,@body)
-           (when (and ,close ,allocated-p)
-             (amqp-channel-close *channel*)))))))
+    (with-gensyms (allocated-p channel-val close-val)
+      `(let ((,channel-val ,channel)
+             (,close-val ,close))
+         (multiple-value-bind (*channel* ,allocated-p) (if ,channel-val
+                                                           ,channel-val
+                                                           (values
+                                                            (allocate-and-open-new-channel *connection*)
+                                                            t))
+           (unwind-protect
+                (progn
+                  ,@body)
+             (when (and ,close-val ,allocated-p)
+               (amqp-channel-close *channel*))))))))
