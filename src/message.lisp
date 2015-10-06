@@ -7,6 +7,9 @@
    (consumer-tag :type string
                  :initarg :consumer-tag
                  :reader message-consumer-tag)
+   (consumer     :type consumer
+                 :initarg :consumer
+                 :reader message-consumer)
    (delivery-tag :type integer
                  :initarg :delivery-tag
                  :reader message-delivery-tag)
@@ -45,8 +48,11 @@
                  :properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
                  :body (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
 
-(defun message-ack (message)
-  (error "Not implemented"))
+(defun message-ack (message &key multiple (channel *channel*))
+  (let ((consumer (message-consumer message)))
+    (if (eq :sync (consumer-type consumer))
+        (amqp-basic-ack (message-delivery-tag message) :multiple multiple :channel channel)
+        (amqp-basic-ack-async (message-delivery-tag message) :multiple multiple :channel channel))))
 
 (defun message-header-value (message name)
   (error "Not implemented"))
