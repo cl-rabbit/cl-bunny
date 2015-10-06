@@ -21,4 +21,5 @@
                (:file "examples/guides/exchanges/direct-exchange-routing")
                (:file "examples/guides/exchanges/fanout-exchange-routing")
                (:file "examples/guides/exchanges/headers-exchange-routing")
-               (:file "examples/guides/exchanges/mandatory-messages")))
+               (:file "examples/guides/exchanges/mandatory-messages")
+               (:file "examples/guides/queues/redeliveries")))
