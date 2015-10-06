@@ -17,3 +17,6 @@
                          :arguments arguments
                          :channel channel)
   queue)
+
+(defun queue.purge (queue &key (channel *channel*))
+  (amqp-queue-purge queue :channel channel))
