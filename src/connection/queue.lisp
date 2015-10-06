@@ -8,8 +8,7 @@
                            :exclusive exclusive
                            :auto-delete auto-delete
                            :arguments arguments
-                           :channel channel)
-  name)
+                           :channel channel))
 
 (defun queue.bind (queue exchange &key routing-key arguments (channel *channel*))
   (amqp-queue-bind queue :exchange exchange
@@ -19,4 +18,5 @@
   queue)
 
 (defun queue.purge (queue &key (channel *channel*))
-  (amqp-queue-purge queue :channel channel))
+  (amqp-queue-purge queue :channel channel)
+  queue)
