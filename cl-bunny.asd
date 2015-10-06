@@ -23,6 +23,7 @@
                (:file "src/support/int-allocator")
                (:file "src/support/channel-id-allocator")
                (:file "src/conditions")
+               (:file "src/properties-and-headers")
                (:file "src/message")
                (:file "src/connection/spec")
                (:file "src/connection/exchange")
