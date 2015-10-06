@@ -23,8 +23,18 @@
 (defun check-connection-string-vhost (vhost)
   (or vhost "/"))
 
+(defun parse-user-info (userinfo)
+  (destructuring-bind (login &optional (password ""))
+      (split-sequence:split-sequence #\: userinfo)
+    (list login password)))
+
 (defun check-connection-string-credentials (userinfo)
-  '("guest" "guest"))
+  (cond
+    ((or (null userinfo)
+         (equal "" userinfo))
+     '("guest" "guest"))
+    ((stringp userinfo)
+     (parse-user-info userinfo))))
 
 ;; see https://www.rabbitmq.com/uri-spec.html
 (defmethod make-connection-spec ((raw string))
