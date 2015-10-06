@@ -5,7 +5,7 @@
 
   (with-connection ("amqp://" :one-shot t)
     (with-channel ()
-      (let ((x (amqp-exchange-declare "headers" :type "headers"))
+      (let ((x (amqp-exchange-declare "headers" :type "headers" :auto-delete t))
             (q1 (amqp-queue-declare "" :exclusive t))
             (q2 (amqp-queue-declare "" :exclusive t)))
         (amqp-queue-bind q1 :exchange x :arguments '(("os" . "linux")
