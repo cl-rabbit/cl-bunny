@@ -69,10 +69,12 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
                                             ("cores" . 4)
                                             ("x-match" . "any"))))))
       (subscribe q1 (lambda (message)
-                      (log:info "~a received ~a" q1 (babel:octets-to-string (message-body message)))))
+                      (log:info "~a received ~a"
+                                 q1 (babel:octets-to-string (message-body message)))))
 
       (subscribe q2 (lambda (message)
-                      (log:info "~a received ~a" q2 (babel:octets-to-string (message-body message)))))
+                      (log:info "~a received ~a"
+                                q2 (babel:octets-to-string (message-body message)))))
 
       (->
         x
