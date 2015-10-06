@@ -40,13 +40,14 @@
     (setf (gethash tag (channel-consumers channel)) consumer)))
 
 (defun remove-consumer (channel consumer-tag)
-  (remhash consumer-tag (channel-consumers channel)))  
+  (remhash consumer-tag (channel-consumers channel)))
 
 (defun find-message-consumer (channel message)
   (gethash (message-consumer-tag message) (channel-consumers channel)))
 
 (defun execute-consumer (consumer message)
-  (funcall (consumer-lambda consumer) message))
+  (when (eq :cancel (funcall (consumer-lambda consumer) message))
+    (unsubscribe consumer)))
 
 (defun dispatch-consumed-message (channel message)
   (if-let ((consumer (find-message-consumer channel message)))
@@ -73,5 +74,7 @@
     (add-consumer channel consumer-tag type fn)))
 
 (defun unsubscribe (consumer)
-  (amqp-basic-cancel  (consumer-tag consumer) :no-wait t)
+  (if (eq (consumer-type consumer) :async)
+      (amqp-basic-cancel-async (consumer-tag consumer) :no-wait t :channel (consumer-channel consumer))
+      (amqp-basic-cancel (consumer-tag consumer) :no-wait t))
   (remove-consumer (consumer-channel consumer) (consumer-tag consumer)))
