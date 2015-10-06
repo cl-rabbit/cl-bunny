@@ -26,7 +26,7 @@
   (bt:with-lock-held (*connections-pool-lock*)
     (remhash (connection-spec connection) *connections-pool*)))
 
-(defun find-or-run-new--connection (spec)
+(defun find-or-run-new-connection (spec)
   (bt:with-lock-held (*connections-pool-lock*)
     (or (get-connection-from-pool spec)
         (run-new-connection spec))))
@@ -104,14 +104,17 @@
 
 (defmacro with-connection (params &body body)
   (destructuring-bind (spec &key one-shot) (parse-with-connection-params params)
-    `(let ((*connection* (if ,one-shot
-                             (run-new-connection ,spec)
-                             (find-or-run-new--connection ,spec))))
-       (unwind-protect
-            (progn
-              ,@body)
-         (when ,one-shot
-           (connection-close))))))
+    (with-gensyms (connection-spec-val one-shot-val)
+      `(let* ((,connection-spec-val ,spec)
+              (,one-shot-val ,one-shot)
+              (*connection* (if ,one-shot-val
+                                (run-new-connection ,connection-spec-val)
+                                (find-or-run-new-connection ,connection-spec-val))))
+         (unwind-protect
+              (progn
+                ,@body)
+           (when ,one-shot-val
+             (connection-close)))))))
 
 (defun connection-start (connection)
   (connection-init connection)
