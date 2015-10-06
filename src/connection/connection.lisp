@@ -256,15 +256,22 @@
   (let ((channel (new-channel connection)))
     (channel-open channel)))
 
-(defmacro with-channel (channel &body body)
-  (with-gensyms (allocated-p)
-    `(multiple-value-bind (*channel* ,allocated-p) (if ,channel
-                                                       ,channel
-                                                       (values
-                                                        (allocate-and-open-new-channel *connection*)
-                                                        t))
-       (unwind-protect
-            (progn
-              ,@body)
-         (when ,allocated-p
-           (amqp-channel-close *channel*))))))
+(defun parse-with-channel-params (params)
+  (etypecase params
+    (string (list params :close t))
+    (symbol (list params :close t))
+    (list params)))
+
+(defmacro with-channel (params &body body)
+  (destructuring-bind (channel &key close) (parse-with-channel-params params)
+    (with-gensyms (allocated-p)
+      `(multiple-value-bind (*channel* ,allocated-p) (if ,channel
+                                                         ,channel
+                                                         (values
+                                                          (allocate-and-open-new-channel *connection*)
+                                                          t))
+         (unwind-protect
+              (progn
+                ,@body)
+           (when (and ,close ,allocated-p)
+             (amqp-channel-close *channel*)))))))
