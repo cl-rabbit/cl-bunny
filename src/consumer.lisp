@@ -46,6 +46,7 @@
   (gethash (message-consumer-tag message) (channel-consumers channel)))
 
 (defun execute-consumer (consumer message)
+  (setf (slot-value message 'consumer) consumer)
   (when (eq :cancel (funcall (consumer-lambda consumer) message))
     (unsubscribe consumer)))
 
