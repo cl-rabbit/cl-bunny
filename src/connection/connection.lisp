@@ -26,15 +26,15 @@
   (bt:with-lock-held (*connections-pool-lock*)
     (remhash (connection-spec connection) *connections-pool*)))
 
-(defun find-or-create-connection (spec)
+(defun find-or-run-new--connection (spec)
   (bt:with-lock-held (*connections-pool-lock*)
     (or (get-connection-from-pool spec)
-        (create-new-connection spec))))
+        (run-new-connection spec))))
 
-(defun create-new-connection (spec)
-  (let ((connection (make-connection-object spec)))
+(defun run-new-connection (spec)
+  (let ((connection (new-connection spec)))
     (add-connection-to-pool spec connection)
-    (connection-run connection)
+    (connection-start connection)
     connection))
 
 (defclass connection ()
@@ -90,7 +90,7 @@
            (bt:condition-wait ,condition ,lock)
            (values-list ,return))))))
 
-(defun make-connection-object (spec)
+(defun new-connection (&optional (spec "amqp://"))
   (let ((connection (make-instance 'connection :spec (make-connection-spec spec)
                                                :connection (cl-rabbit:new-connection))))
     (setup-execute-in-connection-lambda connection)
@@ -105,20 +105,20 @@
 (defmacro with-connection (params &body body)
   (destructuring-bind (spec &key one-shot) (parse-with-connection-params params)
     `(let ((*connection* (if ,one-shot
-                             (create-new-connection ,spec)
-                             (find-or-create-connection ,spec))))
+                             (run-new-connection ,spec)
+                             (find-or-run-new--connection ,spec))))
        (unwind-protect
             (progn
               ,@body)
          (when ,one-shot
            (connection-close))))))
 
-(defun connection-run (connection)
-  (connection-start connection)
+(defun connection-start (connection)
+  (connection-init connection)
   (setf (slot-value connection 'connection-thread)
         (bt:make-thread (lambda () (connection-loop connection)))))
 
-(defun connection-start (connection)
+(defun connection-init (connection)
   (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
     (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
     (cl-rabbit:login-sasl-plain cl-rabbit-connection
@@ -253,9 +253,8 @@
   (remove-connection-from-pool connection))
 
 (defun allocate-and-open-new-channel (connection)
-  (let* ((channel (make-channel connection)))
-    (amqp-channel-open channel)
-    channel))
+  (let ((channel (new-channel connection)))
+    (channel-open channel)))
 
 (defmacro with-channel (channel &body body)
   (with-gensyms (allocated-p)

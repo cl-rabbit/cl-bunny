@@ -28,18 +28,26 @@
 (defvar *channel*)
 (defconstant +max-channels+ 320)
 
-(defun make-channel (connection &optional (number (next-channel-id (connection-channel-id-allocator connection))))
+(defun new-channel (connection &optional (channel-id (next-channel-id (connection-channel-id-allocator connection))))
   (make-instance 'channel :connection connection
-                          :id number))
+                          :id channel-id))
+
+(defun channel-open (channel)
+  (amqp-channel-open channel)
+  channel)
+
+(defun (setf channel-prefetch) (value channel &key global)
+  (amqp-basic-qos 0 value :global global :channel channel))
+
 
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))
     (if (eq :sync (consumer-type consumer))
         (mailbox-send-message (channel-mailbox channel) message)
-        (execute-consumer consumer message))    
+        (execute-consumer consumer message))
     (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
 
-(defun get-registered-exchange (channel name)  
+(defun get-registered-exchange (channel name)
   (gethash name (channel-exchanges channel)))
 
 (defun register-exchange (channel exchange)
@@ -51,6 +59,12 @@
    (get-registered-exchange channel "")
    (register-exchange channel (make-instance 'exchange :channel channel
                                                        :name ""))))
+
+(defun direct-exchange (name &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+  (apply #'amqp-exchange-declare
+         (append (list  name
+                        :type "direct")
+                 args)))
 
 (defun topic-exchange (name &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'amqp-exchange-declare
