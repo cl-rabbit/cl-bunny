@@ -44,3 +44,11 @@
                  :routing-key (cl-rabbit:envelope/routing-key envelope)
                  :properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
                  :body (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
+
+(defun message-ack (message)
+  (error "Not implemented"))
+
+(defun message-header-value (message name)
+  (error "Not implemented"))
+
+
