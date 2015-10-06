@@ -69,10 +69,18 @@
              (when one-shot
                (return)))))
 
+;; maybe just (let ((*channel* (consumer-channel consumer))) ... ) in execute-consumer?
+(defun wrap-async-subscribe-with-channel (fn channel)
+  (lambda (message)
+    (let ((*channel* channel))
+      (funcall fn message))))
+
 (defun subscribe (queue fn &rest args &key (type :async) consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (remf args :type)
   (let ((consumer-tag (apply #'amqp-basic-consume (append (list queue) args))))
-    (add-consumer channel consumer-tag type fn)))
+    (add-consumer channel consumer-tag type (if (eq type :async)
+                                                (wrap-async-subscribe-with-channel fn channel)
+                                                fn))))
 
 (defun unsubscribe (consumer)
   (if (eq (consumer-type consumer) :async)
