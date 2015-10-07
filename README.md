@@ -7,7 +7,7 @@ CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
 * [safe-queue](https://github.com/deadtrickster/safe-queue)
 * [eventfd](https://github.com/deadtrickster/eventfd)
 
-While are working hard to merge our `cl-rabbit` patches to the main repo
+While we are working hard to merge our `cl-rabbit` patches to the main repo
 please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1).
 
 Also please use `master` branch of [quri](https://github.com/fukamachi/quri)
