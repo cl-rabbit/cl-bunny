@@ -11,7 +11,7 @@
                            :channel channel))
 
 (defun queue.bind (queue exchange &key routing-key arguments (channel *channel*))
-  (amqp-queue-bind queue :exchange exchange
+  (amqp-queue-bind queue :exchange (exchange-name exchange)
                          :routing-key routing-key
                          :arguments arguments
                          :channel channel)
