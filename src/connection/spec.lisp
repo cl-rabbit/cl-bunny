@@ -7,8 +7,8 @@
   (login "guest" :type string)
   (password "guest" :type string))
 
-
-(defmethod make-connection-spec ((raw list)))
+(defmethod make-connection-spec ((raw list))
+  (error "Not implemented"))
 
 (defun check-connection-string-scheme (scheme)
   (or (equal scheme "amqp")
@@ -51,3 +51,6 @@
                              :vhost vhost
                              :login (first credentials)
                              :password (second credentials)))))
+
+(defmethod make-connection-spec ((raw (eql nil)))
+  (make-connection-spec "amqp://"))
