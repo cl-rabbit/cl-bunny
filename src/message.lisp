@@ -3,7 +3,7 @@
 (defclass message ()
   ((channel      :type channel
                  :initarg :channel
-                 :reader :message-channel)
+                 :reader message-channel)
    (consumer-tag :type string
                  :initarg :consumer-tag
                  :reader message-consumer-tag)
@@ -48,7 +48,7 @@
                  :properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
                  :body (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
 
-(defun message-ack (message &key multiple (channel *channel*))
+(defun message-ack (message &key multiple (channel (message-channel message)))
   (let ((consumer (message-consumer message)))
     (if (eq :sync (consumer-type consumer))
         (amqp-basic-ack (message-delivery-tag message) :multiple multiple :channel channel)
