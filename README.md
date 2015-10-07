@@ -1,6 +1,6 @@
 # CL-BUNNY
 CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.com/lokedhs/cl-rabbit) and inspired by [bunny](https://github.com/ruby-amqp/bunny).
-**Please use with caution - work in progress, API is not stable, error-handling almost non-existent**. **Contributions are welcome!**
+**Please use with caution - work in progress, API is not stable, error-handling almost non-existent**. **Contributions are greatly appreciated!**
 
 ## Installation Notes
 CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
