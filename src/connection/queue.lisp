@@ -20,3 +20,8 @@
 (defun queue.purge (queue &key (channel *channel*))
   (amqp-queue-purge queue :channel channel)
   queue)
+
+(defun queue.delete (queue &key if-unused if-empty (channel *channel*))
+  (amqp-queue-delete queue :if-unused if-unused
+                           :if-empty if-empty
+                           :channel channel))

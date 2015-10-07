@@ -54,6 +54,7 @@
            #:queue.declare
            #:queue.bind
            #:queue.purge
+           #:queue.delete
            
            #:default-exchange
            #:topic-exchange
