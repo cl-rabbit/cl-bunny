@@ -128,10 +128,14 @@
 (defun connection-init (connection)
   (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
     (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
-    (cl-rabbit:login-sasl-plain cl-rabbit-connection
-                                (connection-spec-vhost spec)
-                                (connection-spec-login spec)
-                                (connection-spec-password spec))))
+    (handler-bind ((cl-rabbit::rabbitmq-server-error
+                     (lambda (error)
+                       (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
+                         (error 'authentication-error :connection connection)))))
+      (cl-rabbit:login-sasl-plain cl-rabbit-connection
+                                  (connection-spec-vhost spec)
+                                  (connection-spec-login spec)
+                                  (connection-spec-password spec)))))
 
 (defun process-return-method (state method channel)
   (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
