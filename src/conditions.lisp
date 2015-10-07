@@ -23,3 +23,8 @@
    (consumer-tag :initarg :consumer-tag
                  :reader error-consumer-tag
                  :type string)))
+
+(define-condition connection-closed (error-base)
+  ((connection :initarg :connection
+               :reader error-connection
+               :type connection)))
