@@ -3,6 +3,17 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
 **Please use with caution - work in progress, API is not stable, error-handling almost non-existent**. **Contributions are welcome!**
 
 ## Examples
+#### Foreword
+To run examples you need to have RabbitMQ installed on `localhost` with
+* vhost `/`
+* user named `guest` with password `guest`.
+
+If you are new to RabbitMQ you may find the following links useful:
+* [Install on Debian/Ubuntu](https://www.rabbitmq.com/install-debian.html)
+* [Access Control](https://www.rabbitmq.com/access-control.html)
+* [RabbitMQ Management plugin](https://www.rabbitmq.com/management.html)
+
+
 #### Hello World!
 
 ```lisp
@@ -32,14 +43,14 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
       (amqp-queue-bind q2 :exchange x :arguments '(("os" . "osx")
                                                    ("cores" . 4)
                                                    ("x-match" . "any")))
-      
+
       (subscribe q1 (lambda (message)
                       (log:info "~a received ~a"
                                 q1 (babel:octets-to-string (message-body message)))))
       (subscribe q2 (lambda (message)
                       (log:info "~a received ~a"
                                 q2 (babel:octets-to-string (message-body message)))))
-                      
+
       (amqp-basic-publish "8 cores/Linux" :exchange x
                                           :properties '((:headers . (("os" . "linux")
                                                                      ("cores" . 8)))))
