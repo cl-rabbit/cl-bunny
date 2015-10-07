@@ -26,6 +26,10 @@
            #:amqp-basic-publish
            #:amqp-basic-consume
 
+           ;; conditions
+           #:authentication-error
+           #:error-connection
+
            ;; high-level interfaces
            #:properties-headers
            #:header-value
@@ -33,6 +37,13 @@
            #:new-connection
            #:connection-start
            #:connection-close
+           
+           #:connection-spec
+           #:connection-spec-login
+           #:connection-spec-password
+           #:connection-spec-host
+           #:connection-spec-port
+           #:connection-spec-vhost
 
            #:new-channel
            #:channel-open
