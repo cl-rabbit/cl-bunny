@@ -119,7 +119,10 @@
 (defun connection-start (connection)
   (connection-init connection)
   (setf (slot-value connection 'connection-thread)
-        (bt:make-thread (lambda () (connection-loop connection)))))
+        (bt:make-thread (lambda () (connection-loop connection))
+                        :name (format nil "CL-BUNNY connection thread. Spec: ~a"
+                                      (connection-spec connection))))
+  connection)
 
 (defun connection-init (connection)
   (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
