@@ -77,18 +77,19 @@
            (,condition (bt:make-condition-variable))
            (,return nil)
            (,connection% ,connection))
-       (when (connection-alive-p ,connection)
-         (bt:with-lock-held (,lock)
-           (funcall (connection-lambda ,connection)
-                    (lambda (&aux (*connection* ,connection%))
-                      (bt:with-lock-held (,lock)
-                        (setf ,return
-                              (multiple-value-list
-                               (unwind-protect
-                                    (progn ,@body)
-                                 (bt:condition-notify ,condition)))))))
-           (bt:condition-wait ,condition ,lock)
-           (values-list ,return))))))
+       (if (connection-alive-p ,connection%)
+           (bt:with-lock-held (,lock)
+             (funcall (connection-lambda ,connection%)
+                      (lambda (&aux (*connection* ,connection%))
+                        (bt:with-lock-held (,lock)
+                          (setf ,return
+                                (multiple-value-list
+                                 (unwind-protect
+                                      (progn ,@body)
+                                   (bt:condition-notify ,condition)))))))
+             (bt:condition-wait ,condition ,lock)
+             (values-list ,return))
+           (error 'connection-closed :connection ,connection%)))))
 
 (defun new-connection (&optional (spec "amqp://"))
   (let ((connection (make-instance 'connection :spec (make-connection-spec spec)
