@@ -5,4 +5,4 @@
 
 
 (defun header-value (headers name)
-  (error "Not implemented"))
+  (assoc-value headers name :test #'equal))

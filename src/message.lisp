@@ -55,6 +55,9 @@
         (amqp-basic-ack-async (message-delivery-tag message) :multiple multiple :channel channel))))
 
 (defun message-header-value (message name)
-  (error "Not implemented"))
+  (header-value
+   (properties-headers
+    (message-properties message))
+   name))
 
 
