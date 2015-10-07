@@ -28,3 +28,11 @@
   ((connection :initarg :connection
                :reader error-connection
                :type connection)))
+
+(define-condition server-error (error-base)
+  ((connection :initarg :connection
+               :reader error-connection
+               :type connection)))
+
+(define-condition authentication-error (server-error)
+  ())
