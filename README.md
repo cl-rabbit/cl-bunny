@@ -122,9 +122,6 @@ More examples including can be found [here](examples)
 * [Ruby AMQP Team](https://github.com/ruby-amqp) for [bunny](https://github.com/ruby-amqp/bunny) and stuff
 * [Christophe Rhodes](http://christophe.rhodes.io/) for [pipe](http://christophe.rhodes.io/notes/blog/posts/2014/code_walking_for_pipe_sequencing/) macro
 
-## Authors
-* Ilya Khaprov <ilya.khaprov@publitechs.com>
-
 ## Copyright
 Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and [CONTRIBUTORS](CONTRIBUTORS.md)
 
