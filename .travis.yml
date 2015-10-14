@@ -16,3 +16,7 @@ install:
 
 script:
   - run-prove cl-bunny.test.asd
+  
+before_install:
+  - sudo apt-get install -y libfixposix-dev
+  - sudo apt-get install -y libffi-dev
