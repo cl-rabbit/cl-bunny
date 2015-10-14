@@ -15,6 +15,23 @@ ship very outdated version. Just build it youself if not sure.
 Also please use `master` branch of [quri](https://github.com/fukamachi/quri)
 until all bug fixes not included in Quicklisp release.
 
+If you are on sbcl and experiencing something like dsecribed [here](http://stackoverflow.com/questions/32897952/sending-messages-to-rabbit-mq-using-lisp-inside-a-docker-container)
+```
+CORRUPTION WARNING in SBCL pid 29643(tid 140737353938688):
+Memory fault at 0x7ffff1ef80e0 (pc=0x7ffff25b48fd, sp=0x7ffff2dced00)
+The integrity of this image is possibly compromised.
+Continuing with fingers crossed.
+
+debugger invoked on a SB-SYS:MEMORY-FAULT-ERROR in thread
+#<THREAD "main thread" RUNNING {100504E593}>:
+  Unhandled memory fault at #x7FFFF1EF80E0.
+```
+Try to compile sbcl with statically linked librabbitmq first.
+To do this you can go to src/runtime/GNUmakefile and
+make sure LINKFLAGS line looks like this: 
+```
+LINKFLAGS = -g  -Wl,--whole-archive <YOUR PATH TO LIBRABBITMQ>/librabbitmq.a -Wl,--no-whole-archive -lcrypto -lssl
+```
 
 
 ## Examples
