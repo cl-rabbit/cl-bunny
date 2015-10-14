@@ -9,14 +9,21 @@ env:
     - COVERAGE_EXCLUDE=t
   matrix:
     - LISP=sbcl-bin COVERALLS=true
+  
+before_install:
+  - sudo apt-get install -y libfixposix-dev
+  - sudo apt-get install -y libffi-dev
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/$ROSWELL_BRANCH/scripts/install-for-ci.sh | sh
   - ros install prove
 
+before_script:
+  - mkdir /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects #just in case
+  - git clone https://github.com/deadtrickster/safe-queue.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/safe-queue
+  - git clone https://github.com/deadtrickster/eventfd.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/eventfd
+  - git clone https://github.com/fukamachi/quri.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/quri
+  - git clone -b master1 https://github.com/deadtrickster/cl-rabbit.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/cl-rabbit
+
 script:
   - run-prove cl-bunny.test.asd
-  
-before_install:
-  - sudo apt-get install -y libfixposix-dev
-  - sudo apt-get install -y libffi-dev
