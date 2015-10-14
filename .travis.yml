@@ -13,16 +13,14 @@ env:
 before_install:
   - sudo apt-get install -y libfixposix-dev
   - sudo apt-get install -y libffi-dev
+  - sudo apt-get install libssl-dev
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/$ROSWELL_BRANCH/scripts/install-for-ci.sh | sh
   - ros install prove
 
 before_script:
-  - git clone https://github.com/deadtrickster/safe-queue.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/safe-queue
-  - git clone https://github.com/deadtrickster/eventfd.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/eventfd
-  - git clone https://github.com/fukamachi/quri.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/quri
-  - git clone -b master1 https://github.com/deadtrickster/cl-rabbit.git /home/travis/.roswell/impls/ALL/ALL/quicklisp/local-projects/cl-rabbit
+  - ./install-travis-deps.sh
 
 script:
   - run-prove cl-bunny.test.asd
