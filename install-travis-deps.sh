@@ -11,4 +11,4 @@ git clone https://github.com/alanxz/rabbitmq-c.git ~/rabbitmq-c
 mkdir ~/rabbitmq-c/build
 cd ~/rabbitmq-c/build
 cmake ..
-cmake --build . --target install
+sudo cmake --build . --target install
