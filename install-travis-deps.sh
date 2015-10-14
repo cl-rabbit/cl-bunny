@@ -12,3 +12,4 @@ mkdir ~/rabbitmq-c/build
 cd ~/rabbitmq-c/build
 cmake ..
 sudo cmake --build . --target install
+sudo cp /usr/local/lib/x86_64-linux-gnu/librabbitmq.so.4.1.4 /usr/local/lib/librabbitmq.so
