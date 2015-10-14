@@ -9,7 +9,10 @@ env:
     - COVERAGE_EXCLUDE=t
   matrix:
     - LISP=sbcl-bin COVERALLS=true
-  
+
+services:
+  - rabbitmq
+    
 before_install:
   - sudo apt-get install -y libfixposix-dev
   - sudo apt-get install -y libffi-dev
