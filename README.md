@@ -26,11 +26,11 @@ debugger invoked on a SB-SYS:MEMORY-FAULT-ERROR in thread
 #<THREAD "main thread" RUNNING {100504E593}>:
   Unhandled memory fault at #x7FFFF1EF80E0.
 ```
-Try to compile sbcl with statically linked librabbitmq first.
+Try to compile sbcl with statically linked librabbitmq and libffi first.
 To do this you can go to src/runtime/GNUmakefile and
 make sure LINKFLAGS line looks like this: 
 ```
-LINKFLAGS = -g  -Wl,--whole-archive <YOUR PATH TO LIBRABBITMQ>/librabbitmq.a -Wl,--no-whole-archive -lcrypto -lssl
+LINKFLAGS = -g  -Wl,--whole-archive <YOUR PATH TO>/librabbitmq.a <YOUR PATH TO>/libffi.a -Wl,--no-whole-archive -lcrypto -lssl
 ```
 
 
