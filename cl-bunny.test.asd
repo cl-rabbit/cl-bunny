@@ -19,7 +19,8 @@
   :components ((:module "test"
                 :serial t
                 :components
-                ((:file "package"))))
+                ((:file "package")
+                 (:test-file "dummy"))))
   :defsystem-depends-on (:prove-asdf)
   :perform (test-op :after (op c)
                     (funcall (intern #.(string :run-test-system) :prove-asdf) c)))
