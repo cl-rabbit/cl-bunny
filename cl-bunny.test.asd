@@ -20,7 +20,11 @@
                 :serial t
                 :components
                 ((:file "package")
-                 (:test-file "dummy"))))
+                 (:test-file "dummy")
+                 (:module "integration"
+                  :serial t
+                  :components
+                  ((:test-file "basic"))))))
   :defsystem-depends-on (:prove-asdf)
   :perform (test-op :after (op c)
                     (funcall (intern #.(string :run-test-system) :prove-asdf) c)))
