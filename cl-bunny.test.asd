@@ -16,7 +16,7 @@
                "log4cl"
                "cl-interpol")
   :serial t
-  :components ((:module "test"
+  :components ((:module "t"
                 :serial t
                 :components
                 ((:file "package")
