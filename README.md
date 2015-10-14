@@ -8,7 +8,9 @@ CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
 * [eventfd](https://github.com/deadtrickster/eventfd)
 
 While we are working hard to merge our `cl-rabbit` patches to the main repo
-please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1).
+please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1).<br>
+Make sure you are using the latest version of [librabbitmq](https://github.com/alanxz/rabbitmq-c). At least Ubuntu dists usually
+ship very outdated version. Just build it youself if not sure.
 
 Also please use `master` branch of [quri](https://github.com/fukamachi/quri)
 until all bug fixes not included in Quicklisp release.
