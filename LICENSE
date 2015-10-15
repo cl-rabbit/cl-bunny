@@ -64,6 +64,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
+Tutorials code inspired by tutorials from rabbitmq.com (http://www.rabbitmq.com/getstarted.html): 
+
+RabbitMQ website.
+
+Copyright (c) 2007-2015 Pivotal Software, Inc. All Rights Reserved. 
+
+================================================================================
+
 Pipe macro (examples/pipe.lisp) copy-pasted from here:
 http://christophe.rhodes.io/notes/blog/posts/2014/code_walking_for_pipe_sequencing/
 
