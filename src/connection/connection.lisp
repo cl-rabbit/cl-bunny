@@ -72,23 +72,31 @@
             (lambda () ,@body)))
 
 (defmacro execute-in-connection-thread-sync ((&optional (connection '*connection*)) &body body)
-  (with-gensyms (lock condition return connection%)
+  (with-gensyms (lock condition return connection% error)
     `(let ((,lock (bt:make-lock))
            (,condition (bt:make-condition-variable))
            (,return nil)
-           (,connection% ,connection))
+           (,connection% ,connection)
+           (,error))
        (if (connection-alive-p ,connection%)
            (bt:with-lock-held (,lock)
              (funcall (connection-lambda ,connection%)
                       (lambda (&aux (*connection* ,connection%))
                         (bt:with-lock-held (,lock)
-                          (setf ,return
-                                (multiple-value-list
-                                 (unwind-protect
-                                      (progn ,@body)
-                                   (bt:condition-notify ,condition)))))))
+                          (handler-case
+                              (setf ,return
+                                    (multiple-value-list
+                                     (unwind-protect
+                                          (progn
+                                            ,@body)
+                                       (bt:condition-notify ,condition))))
+                            (cl-rabbit::rabbitmq-server-error (e)
+                              (log:error "Server error: ~a" e)
+                              (setf ,error e))))))
              (bt:condition-wait ,condition ,lock)
-             (values-list ,return))
+             (if ,error
+                 (error (cl-rabbit-error-to-cl-bunny-error ,error))
+                 (values-list ,return)))
            (error 'connection-closed :connection ,connection%)))))
 
 (defun new-connection (&optional (spec "amqp://"))
