@@ -134,7 +134,7 @@ If you are new to RabbitMQ you may find the following links useful:
 ```
 
 #### More?
-More examples including can be found [here](examples)
+More examples can be found [here](examples)
 
 ## Special Thanks To
 * [Elias Mårtenson](https://github.com/lokedhs) for [cl-rabbit](https://github.com/lokedhs/cl-rabbit)
