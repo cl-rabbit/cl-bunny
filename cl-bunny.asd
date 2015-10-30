@@ -12,6 +12,7 @@
   :author "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :licence "MIT"
   :depends-on ("alexandria"
+               "cl-amqp"
                "iolib"
                "cl-rabbit"
                "quri"
