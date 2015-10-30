@@ -95,7 +95,7 @@
                               (setf ,error e))))))
              (bt:condition-wait ,condition ,lock)
              (if ,error
-                 (error (cl-rabbit-error-to-cl-bunny-error ,error))
+                 (error ,error)
                  (values-list ,return)))
            (error 'connection-closed :connection ,connection%)))))
 
