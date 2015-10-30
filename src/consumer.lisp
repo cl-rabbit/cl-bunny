@@ -7,6 +7,9 @@
   ((channel :type channel
             :initarg :channel
             :reader consumer-channel)
+   (queue :type queue
+          :initarg :queue
+          :reader consumer-queue)
    (type :type (or :sync :async)
          :initarg :type
          :initform :sync
@@ -24,16 +27,17 @@
     (let ((consumers (loop for consumer in consumers
                            collect
                               `(apply #'subscribe (list ,@consumer)))))
-      `(let ((,new-consumers (list 
-                             ,@consumers)))
+      `(let ((,new-consumers (list
+                              ,@consumers)))
          (unwind-protect
               (progn ,@body)
            (loop for consumer in ,new-consumers do
                     (unsubscribe consumer)))))))
 
-(defun add-consumer (channel tag type lambda)
+(defun add-consumer (channel queue tag type lambda)
   (assert (null (gethash tag (channel-consumers channel))) (tag) 'channel-consumer-already-added channel tag)
   (let ((consumer (make-instance 'consumer :channel channel
+                                           :queue queue
                                            :type type
                                            :tag tag
                                            :lambda lambda)))
@@ -77,10 +81,12 @@
 
 (defun subscribe (queue fn &rest args &key (type :async) consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (remf args :type)
-  (let ((consumer-tag (apply #'amqp-basic-consume (append (list queue) args))))
-    (add-consumer channel consumer-tag type (if (eq type :async)
-                                                (wrap-async-subscribe-with-channel fn channel)
-                                                fn))))
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (let ((*channel* channel))
+      (let ((consumer-tag (apply #'amqp-basic-consume% (append (list (queue-name queue)) args))))
+        (add-consumer channel queue consumer-tag type (if (eq type :async)
+                                                          (wrap-async-subscribe-with-channel fn channel)
+                                                          fn))))))
 
 (defun unsubscribe (consumer)
   (if (eq (consumer-type consumer) :async)

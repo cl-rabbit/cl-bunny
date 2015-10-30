@@ -95,6 +95,12 @@
   (execute-in-connection-thread-sync ((channel-connection channel))
     (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :body body) args))))
 
+
+(defun amqp-basic-consume% (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
+                                             (channel *channel*))
+  (remf args :channel)
+  (apply #'cl-rabbit:basic-consume (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) queue) args)))
+
 (defun amqp-basic-consume (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
                                              (channel *channel*))
   (remf args :channel)
