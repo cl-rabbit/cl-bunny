@@ -1,5 +1,8 @@
 (in-package :cl-bunny)
 
+(deftype channel-mode ()
+  `(and symbol (member :default :transactional :consume)))
+
 (defclass channel ()
   ((connection :type connection
                :initarg :connection
@@ -14,12 +17,16 @@
    (open-p     :type boolean
                :initform nil
                :accessor channel-open-p)
-   (exchanges :type hash-table
-              :initform (make-hash-table :test #'equal)
-              :reader channel-exchanges)
-   (consumers :type hash-table
-              :initform (make-hash-table :test #'equal)
-              :reader channel-consumers)
+   (exchanges  :type hash-table
+               :initform (make-hash-table :test #'equal)
+               :reader channel-exchanges)
+   (consumers  :type hash-table
+               :initform (make-hash-table :test #'equal)
+               :reader channel-consumers)
+   (mode       :type channel-mode
+               :initform :default
+               :initarg :mode
+               :reader channel-mode)
    ;; callbacks
    (on-exchange-return :type function
                        :initform nil
