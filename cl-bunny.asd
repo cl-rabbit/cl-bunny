@@ -12,7 +12,7 @@
   :author "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :licence "MIT"
   :depends-on ("alexandria"
-               "cl-amqp"
+               ;; "cl-amqp"
                "iolib"
                "cl-rabbit"
                "quri"
@@ -28,7 +28,7 @@
                (:file "src/message")
                (:file "src/connection/spec")
                (:file "src/connection/exchange")
-               (:file "src/connection/queue")
+               (:file "src/queue")
                (:file "src/connection/channel")
                (:file "src/connection/connection")
                (:file "src/consumer")
