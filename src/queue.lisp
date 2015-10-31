@@ -20,6 +20,9 @@
 
 ;; maybe there should be queue object with its own mailbox?
 
+(defmethod queue-name ((queue string))
+  queue)
+
 (defun queue.declare (name &key passive durable exclusive auto-delete arguments (channel *channel*))
   (multiple-value-bind (queue-name messages-count consumers-count)
       (amqp-queue-declare name :passive passive
