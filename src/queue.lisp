@@ -14,7 +14,7 @@
                 :reader queue-auto-delete-p)
    (arguments :initarg :arguments
               :reader queue-arguments)
-   (mailbox :type #+sbcl sb-concurrency:mailbox #-sbcl cons ;; TODO: make safe-queue:mailbox type
+   (mailbox :type safe-queue:mailbox
             :initarg :mailbox
             :initform (safe-queue:make-mailbox :name "AMQP Queue mailbox"))))
 

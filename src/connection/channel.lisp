@@ -7,7 +7,7 @@
   ((connection :type connection
                :initarg :connection
                :reader channel-connection)
-   (mailbox    :type #+sbcl sb-concurrency:mailbox #-sbcl cons
+   (mailbox    :type safe-queue:mailbox
                :initarg :mailbox
                :initform (safe-queue:make-mailbox :name "AMQP Channel mailbox")
                :reader channel-mailbox)
