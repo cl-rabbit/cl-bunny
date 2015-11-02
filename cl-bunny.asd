@@ -16,6 +16,8 @@
                "iolib"
                "cl-rabbit"
                "quri"
+               "lparallel"
+               "blackbird"
                "safe-queue"
                "eventfd"
                "log4cl")
