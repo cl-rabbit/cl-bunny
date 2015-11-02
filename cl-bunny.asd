@@ -29,7 +29,7 @@
                (:file "src/connection/spec")
                (:file "src/connection/channel")
                (:file "src/queue")
-               (:file "src/connection/exchange")
+               (:file "src/exchange")
                (:file "src/connection/connection")
                (:file "src/consumer")
                (:file "src/amqp")))
