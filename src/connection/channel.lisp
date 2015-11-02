@@ -52,3 +52,6 @@
         (mailbox-send-message (channel-mailbox channel) message)
         (execute-consumer consumer message))
     (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
+
+(defgeneric channel-send (channel method)
+  (:documentation "API Endpoint, hides transport implementation"))
