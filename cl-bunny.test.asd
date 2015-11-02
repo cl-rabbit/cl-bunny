@@ -24,7 +24,11 @@
                  (:module "integration"
                   :serial t
                   :components
-                  ((:test-file "basic"))))))
+                  ((:test-file "basic")))
+                 (:module "unit"
+                  :serial t
+                  :components
+                  ((:test-file "channel-send"))))))
   :defsystem-depends-on (:prove-asdf)
   :perform (test-op :after (op c)
                     (funcall (intern #.(string :run-test-system) :prove-asdf) c)))

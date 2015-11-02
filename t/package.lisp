@@ -4,6 +4,9 @@
   (:use :cl
         :alexandria
         :prove
-        :cl-bunny))
+        :cl-bunny
+        :blackbird)
+  (:shadowing-import-from :prove
+                          :*debug-on-error*))
 
 (in-package :cl-bunny.test)
