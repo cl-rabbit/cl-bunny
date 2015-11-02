@@ -55,3 +55,20 @@
 
 (defgeneric channel-send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
+
+(defmethod channel-send :around (channel method)
+  (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
+      ;; we are inside of connection thread, just return promise
+      (call-next-method)
+      ;; we are calling from different thread,
+      ;; for now we accept this as call from regular sync lisp code
+      ;; use lparallel promise to lift errors
+      (let ((promise (lparallel:promise)))
+        (execute-in-connection-thread ((channel-connection channel))
+          (blackbird:catcher
+           (blackbird:attach
+            (channel-send channel method)
+            (lambda (&rest vals)
+              (lparallel:fulfill promise (values-list vals))))
+           (t (e) (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
+        (lparallel:force promise))))

@@ -48,6 +48,7 @@
            #:new-channel
            #:channel-open
            #:channel-prefetch
+           #:channel-send
            
            #:exchange-on-return-callback
 
