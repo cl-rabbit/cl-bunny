@@ -54,9 +54,11 @@
                            (channel-id channel)
                            queue)))
 
-(defun amqp-exchange-declare (name &rest args &key (type "direct") (channel *channel*) passive durable auto-delete internal arguments)
+(defun amqp-exchange-declare (name &rest args &key (type "direct") (channel *channel*) passive durable auto-delete internal arguments (nowait nil nowait-supplied-p))
   (remf args :channel)
   (remf args :type)
+  (when nowait-supplied-p
+    (error "nowait not supported"))
   (execute-in-connection-thread-sync ((channel-connection channel))
     (apply #'cl-rabbit:exchange-declare
            (append (list (connection-cl-rabbit-connection (channel-connection channel))
