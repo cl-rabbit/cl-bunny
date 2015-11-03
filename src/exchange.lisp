@@ -76,10 +76,3 @@
                               :channel (or (exchange-channel exchange)
                                            channel))
   exchange)
-
-
-
-
-
-
-
