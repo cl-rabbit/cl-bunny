@@ -14,7 +14,10 @@
            #:message-properties
            #:message-body
            #:message-ack
+           #:message-nack
            #:message-header-value
+           #:message-property-value
+
 
            #:amqp-queue-declare
            #:amqp-queue-bind
