@@ -29,13 +29,10 @@
 (defun find-or-run-new-connection (spec)
   (bt:with-lock-held (*connections-pool-lock*)
     (or (get-connection-from-pool spec)
-        (run-new-connection spec))))
+        (add-connection-to-pool spec (run-new-connection spec)))))
 
 (defun run-new-connection (spec)
-  (let ((connection (new-connection spec)))
-    (add-connection-to-pool spec connection)
-    (connection-start connection)
-    connection))
+  (connection-start (new-connection spec)))
 
 (defclass connection ()
   ((spec :initarg :spec :reader connection-spec)
