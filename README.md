@@ -54,7 +54,7 @@ If you are new to RabbitMQ you may find the following links useful:
           (queue.declare "cl-bunny.examples.hello-world" :auto-delete t)
           (subscribe (lambda (message)
                        (log:info "Received ~a"
-                                 (babel:octets-to-string (message-body message))))))
+                                 (message-body-string message)))))
         (publish x "Hello world!" :routing-key "cl-bunny.examples.hello-world"))
       (sleep 1))))
 ```
