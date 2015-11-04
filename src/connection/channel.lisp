@@ -72,3 +72,42 @@
               (lparallel:fulfill promise (values-list vals))))
            (t (e) (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
         (lparallel:force promise))))
+
+(defmethod channel-send (channel method)
+  (connection-send (channel-connection channel) channel method))
+
+(defmacro channel-send% (channel method &body body)
+  (with-gensyms (cb)
+    `(let ((reply (channel-send ,channel ,method)))
+       (flet ((,cb (reply)
+                (declare (ignorable reply))
+                ,@body))
+         (if (blackbird:promisep reply)
+             (blackbird:attach reply (function ,cb))
+             (,cb reply))))))
+
+(defun allocate-and-open-new-channel (connection)
+  (let ((channel (new-channel connection)))
+    (channel-open channel)))
+
+(defun parse-with-channel-params (params)
+  (etypecase params
+    (string (list params :close t))
+    (symbol (list params :close t))
+    (list params)))
+
+(defmacro with-channel (params &body body)
+  (destructuring-bind (channel &key close) (parse-with-channel-params params)
+    (with-gensyms (allocated-p channel-val close-val)
+      `(let ((,channel-val ,channel)
+             (,close-val ,close))
+         (multiple-value-bind (*channel* ,allocated-p) (if ,channel-val
+                                                           ,channel-val
+                                                           (values
+                                                            (allocate-and-open-new-channel *connection*)
+                                                            t))
+           (unwind-protect
+                (progn
+                  ,@body)
+             (when (and ,close-val ,allocated-p)
+               (amqp-channel-close *channel*))))))))

@@ -23,35 +23,54 @@
 (defmethod queue-name ((queue string))
   queue)
 
-(defun queue.declare (name &key passive durable exclusive auto-delete arguments (channel *channel*))
-  (multiple-value-bind (queue-name messages-count consumers-count)
-      (amqp-queue-declare name :passive passive
-                               :durable durable
-                               :exclusive exclusive
-                               :auto-delete auto-delete
-                               :arguments arguments
-                               :channel channel)
-    (values (make-instance 'queue :name queue-name
+(defun queue.declare (&key (queue "") (passive) (durable) (exclusive) (auto-delete) (nowait) (arguments nil) (channel *channel*))
+  (channel-send% channel (make-instance 'amqp-method-queue-declare
+                                        :queue queue
+                                        :passive passive
+                                        :durable durable
+                                        :exclusive exclusive
+                                        :auto-delete auto-delete
+                                        :nowait nowait
+                                        :arguments arguments)
+    (values (make-instance 'queue :name (amqp-method-field-queue reply)
                                   :passive passive
                                   :durable durable
                                   :exclusive exclusive
                                   :auto-delete auto-delete
                                   :arguments arguments)
-            messages-count
-            consumers-count)))
+            (amqp-method-field-message-count reply)
+            (amqp-method-field-consumer-count reply))))
 
-(defun queue.bind (queue exchange &key routing-key arguments (channel *channel*))
-  (amqp-queue-bind (queue-name queue) :exchange (exchange-name exchange)
-                                      :routing-key routing-key
-                                      :arguments arguments
-                                      :channel channel)
-  queue)
+(defun queue.bind (queue exchange &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
+  (channel-send% channel
+                 (make-instance 'amqp-method-queue-bind
+                   :queue (queue-name queue)
+                   :exchange (exchange-name exchange)
+                   :routing-key routing-key
+                   :nowait nowait
+                   :arguments arguments)
+    queue))
 
-(defun queue.purge (queue &key (channel *channel*))
-  (amqp-queue-purge (queue-name queue) :channel channel)
-  queue)
+(defun queue.purge (queue &key (nowait) (channel *channel*))
+  (channel-send% channel (make-instance 'amqp-method-queue-purge
+                                        :queue (queue-name queue)
+                                        :nowait nowait)
+    queue))
 
-(defun queue.delete (queue &key if-unused if-empty (channel *channel*))
-  (amqp-queue-delete (queue-name queue) :if-unused if-unused
-                                        :if-empty if-empty
-                                        :channel channel))
+(defun queue.delete (queue &key (if-unused) (if-empty) (nowait) (channel *channel*))
+  (channel-send% channel
+                 (make-instance 'amqp-method-queue-delete
+                                :queue (queue-name queue)
+                                :if-unused if-unused
+                                :if-empty if-empty
+                                :nowait nowait)
+    queue))
+
+(defun queue.unbind (queue exchange &key (routing-key "") (arguments nil) (channel *channel*))
+  (channel-send% channel
+                 (make-instance 'amqp-method-queue-unbind
+                   :queue (queue-name queue)
+                   :exchange (exchange-name exchange)
+                   :routing-key routing-key
+                   :arguments arguments)
+    queue))

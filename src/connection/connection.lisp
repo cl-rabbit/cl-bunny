@@ -1,40 +1,8 @@
 (in-package :cl-bunny)
 
-(defparameter *connections-pool* (make-hash-table :test #'equal))
-;; TODO: maybe replace with synchronized hash-table on sbcl?
-(defvar *connections-pool-lock* (bt:make-lock "CL-BUNNY connections pool lock"))
-
 (defvar *connection*)
 
 (defparameter *connection-type* 'librabbitmq-connection)
-
-(defun connection-alive-p (connection)
-  (and connection
-       (slot-boundp connection 'connection-thread)
-       (bt:thread-alive-p (connection-thread connection))))
-
-(defun check-connection-alive (connection)
-  (when (connection-alive-p connection)
-    connection))
-
-(defun get-connection-from-pool (spec)
-  (check-connection-alive (gethash spec *connections-pool*)))
-
-(defun add-connection-to-pool (spec connection)
-  (setf (gethash spec *connections-pool*)
-        connection))
-
-(defun remove-connection-from-pool (connection)
-  (bt:with-lock-held (*connections-pool-lock*)
-    (remhash (connection-spec connection) *connections-pool*)))
-
-(defun find-or-run-new-connection (spec)
-  (bt:with-lock-held (*connections-pool-lock*)
-    (or (get-connection-from-pool spec)
-        (add-connection-to-pool spec (run-new-connection spec)))))
-
-(defun run-new-connection (spec)
-  (connection-start (new-connection spec)))
 
 (defclass connection ()
   ((spec :initarg :spec :reader connection-spec)
@@ -54,6 +22,18 @@
 
    (connection-thread :reader connection-thread)))
 
+(defun connection-alive-p (connection)
+  (and connection
+       (slot-boundp connection 'connection-thread)
+       (bt:thread-alive-p (connection-thread connection))))
+
+(defun check-connection-alive (connection)
+  (when (connection-alive-p connection)
+    connection))
+
+(defun run-new-connection (spec)
+  (connection-start (new-connection spec)))
+
 (defun setup-execute-in-connection-lambda (connection)
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
     (setf execute-in-connection-lambda
@@ -65,3 +45,13 @@
 (defmacro execute-in-connection-thread ((&optional (connection '*connection*)) &body body)
   `(funcall (connection-lambda ,connection)
             (lambda () ,@body)))
+
+(defun connection-close (&optional (connection *connection*))
+  (when (connection-alive-p connection)
+    (execute-in-connection-thread (connection)
+      (error 'stop-connection))
+    (bt:join-thread (connection-thread connection)))
+  (remove-connection-from-pool connection))
+
+
+(defgeneric connection-send (connection channel method))

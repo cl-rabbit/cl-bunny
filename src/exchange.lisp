@@ -71,7 +71,7 @@
                               :routing-key (routing-key routing-key)
                               :mandatory mandatory
                               :immediate immediate
-                              :properties properties
+                              :content-properties properties
                               :encoding encoding
                               :channel (or (exchange-channel exchange)
                                            channel))

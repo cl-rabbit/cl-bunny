@@ -9,7 +9,7 @@
                (with-connection ("amqp://" :one-shot t)
                  (with-channel ()
                    (let ((x (default-exchange)))
-                     (setf queue (queue.declare "" :auto-delete t))
+                     (setf queue (queue.declare :auto-delete t))
                      (publish x message :routing-key queue)))))
              (test-recv-sync ()
                (with-connection ("amqp://" :one-shot t)

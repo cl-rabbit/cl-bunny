@@ -172,35 +172,50 @@
           (eventfd.close control-fd)
           (cl-rabbit:destroy-connection cl-rabbit-connection))))))
 
-(defun connection-close (&optional (connection *connection*))
-  (when (connection-alive-p connection)
-    (execute-in-connection-thread (connection)
-      (error 'stop-connection))
-    (bt:join-thread (connection-thread connection)))
-  (remove-connection-from-pool connection))
+(defmethod connection-send :before ((connection librabbitmq-connection) channel method)
+  (when (and (amqp-method-synchronous-p method)
+             (amqp-method-field-nowait method))
+    (log:warn "Librabbitmq connection: nowait not supported")))
 
-(defun allocate-and-open-new-channel (connection)
-  (let ((channel (new-channel connection)))
-    (channel-open channel)))
+(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-declare))
+  (multiple-value-bind (queue message-count consumer-count)
+      (cl-rabbit:queue-declare (connection-cl-rabbit-connection connection)
+                               (channel-id channel)
+                               :queue (amqp-method-field-queue method)
+                               :passive (amqp-method-field-passive method)
+                               :durable (amqp-method-field-durable method)
+                               :exclusive (amqp-method-field-exclusive method)
+                               :auto-delete (amqp-method-field-auto-delete method)
+                               :arguments (amqp-method-field-arguments method))
+    (make-instance 'amqp-method-queue-declare-ok
+                   :queue queue
+                   :message-count message-count
+                   :consumer-count consumer-count)))
 
-(defun parse-with-channel-params (params)
-  (etypecase params
-    (string (list params :close t))
-    (symbol (list params :close t))
-    (list params)))
+(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-bind))
+  (cl-rabbit:queue-bind (connection-cl-rabbit-connection connection)
+                        (channel-id channel)
+                        :queue (amqp-method-field-queue method)
+                        :exchange (amqp-method-field-exchange method)
+                        :routing-key (amqp-method-field-routing-key method)
+                        :arguments (amqp-method-field-arguments method)
+                        )
+  (make-instance 'amqp-method-queue-bind-ok))
 
-(defmacro with-channel (params &body body)
-  (destructuring-bind (channel &key close) (parse-with-channel-params params)
-    (with-gensyms (allocated-p channel-val close-val)
-      `(let ((,channel-val ,channel)
-             (,close-val ,close))
-         (multiple-value-bind (*channel* ,allocated-p) (if ,channel-val
-                                                           ,channel-val
-                                                           (values
-                                                            (allocate-and-open-new-channel *connection*)
-                                                            t))
-           (unwind-protect
-                (progn
-                  ,@body)
-             (when (and ,close-val ,allocated-p)
-               (amqp-channel-close *channel*))))))))
+(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-purge))
+  (multiple-value-bind (message-count)
+      (cl-rabbit:queue-purge (connection-cl-rabbit-connection connection)
+                             (channel-id channel)
+                             :queue (amqp-method-field-queue method))
+    (make-instance 'amqp-method-queue-purge-ok
+                   :message-count message-count)))
+
+(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-delete))
+  (multiple-value-bind (message-count)
+      (cl-rabbit:queue-delete (connection-cl-rabbit-connection connection)
+                              (channel-id channel)
+                              :queue (amqp-method-field-queue method)
+                              :if-unused (amqp-method-field-if-unused method)
+                              :if-empty (amqp-method-field-if-empty method))
+    (make-instance 'amqp-method-queue-delete-ok
+                   :message-count message-count)))

@@ -90,12 +90,12 @@
                                        prefetch-count) args))))
 
 ;; TODO: detect string, set encoding/content type appropriately. use this info to decode message body
-(defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate properties
+(defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate content-properties
                                             (encoding :utf-8)
                                             (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :body body) args))))
+    (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :content body) args))))
 
 
 (defun amqp-basic-consume% (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
