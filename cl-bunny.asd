@@ -36,4 +36,5 @@
                (:file "src/queue")
                (:file "src/exchange")
                (:file "src/consumer")
+               (:file "src/basic")
                (:file "src/amqp")))
