@@ -12,9 +12,6 @@ please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1
 Make sure you are using the latest version of [librabbitmq](https://github.com/alanxz/rabbitmq-c). At least Ubuntu dists usually
 ship very outdated version. Just build it youself if not sure.
 
-Also please use `master` branch of [quri](https://github.com/fukamachi/quri)
-until all bug fixes not included in Quicklisp release.
-
 If you are on sbcl and experiencing something like reported [here](http://stackoverflow.com/questions/32897952/sending-messages-to-rabbit-mq-using-lisp-inside-a-docker-container)
 ```
 CORRUPTION WARNING in SBCL pid 29643(tid 140737353938688):
