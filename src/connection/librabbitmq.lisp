@@ -269,8 +269,7 @@
                         :queue (amqp-method-field-queue method)
                         :exchange (amqp-method-field-exchange method)
                         :routing-key (amqp-method-field-routing-key method)
-                        :arguments (amqp-method-field-arguments method)
-                        )
+                        :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-queue-bind-ok))
 
 (defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-purge))
