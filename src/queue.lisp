@@ -25,8 +25,8 @@
 (defmethod queue-name ((queue string))
   queue)
 
-(defun queue.declare (&key (queue "") (passive) (durable) (exclusive nil exclusive-supplied-p) (auto-delete nil auto-delete-supplied-p) (nowait) (arguments nil) (channel *channel*))
-  ;; (when (and (equal queue "")
+(defun queue.declare (&key (name "") (passive) (durable) (exclusive nil exclusive-supplied-p) (auto-delete nil auto-delete-supplied-p) (nowait) (arguments nil) (channel *channel*))
+  ;; (when (and (equal name "")
   ;;            (or exclusive (not exclusive-supplied-p))
   ;;            (or auto-delete (not auto-delete-supplied-p)))
   ;;   (setf exclusive t
@@ -34,7 +34,7 @@
   ;; todo register exclusive queues
   ;; mark them as invalid on connection close
   (channel-send% channel (make-instance 'amqp-method-queue-declare
-                                        :queue queue
+                                        :queue name
                                         :passive passive
                                         :durable durable
                                         :exclusive exclusive
