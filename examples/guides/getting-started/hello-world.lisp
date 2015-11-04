@@ -3,44 +3,44 @@
 (defun test-send (message)
   (with-connection "amqp://"
     (with-channel ()
-      (amqp-queue-declare "test-queue")
-      (amqp-basic-publish message :routing-key "test-queue"))))
+      (queue.declare :name "test-queue")
+      (publish (exchange.default) message :routing-key "test-queue"))))
 
 (defun test-recv-sync ()
   (with-connection "amqp://"
     (with-channel ()
-      (amqp-queue-declare "test-queue")
+      (queue.declare :name "test-queue")
       (with-consumers
           (("test-queue"
             (lambda (message)
-              (format t "Got message ~a" (babel:octets-to-string (message-body message))))
+              (format t "Got message ~a" (message-body-string message)))
             :type :sync))
         (consume :one-shot t)))))
 
 (defun hello-world ()
   (with-connection ("amqp://" :one-shot t)
     (with-channel ()
-      (let ((x (default-exchange)))
+      (let ((x (exchange.default)))
         (->
-          (queue.declare "cl-bunny.examples.hello-world" :auto-delete t)
+          (queue.declare :name "cl-bunny.examples.hello-world" :auto-delete t)
           (subscribe (lambda (message)
                        (log:info "Received ~a"
-                                 (babel:octets-to-string (message-body message))))))
+                                 (message-body-string message)))))
         (publish x "Hello world!" :routing-key "cl-bunny.examples.hello-world"))
       (sleep 1))))
 
 (defun hello-world-sync ()
   (with-connection ("amqp://" :one-shot t)
     (with-channel ()
-      (let ((x (default-exchange))
+      (let ((x (exchange.default))
             (q "cl-bunny.examples.hello-world"))
 
-        (queue.declare q :auto-delete t)
+        (queue.declare :name q :auto-delete t)
         (with-consumers
             ((q
               (lambda (message)
                 (log:info "Received ~a"
-                          (babel:octets-to-string (message-body message))))
+                          (message-body-string message)))
               :type :sync))
           (publish x "Hello world!" :routing-key q)
           (consume :one-shot t))))))

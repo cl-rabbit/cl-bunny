@@ -6,4 +6,9 @@
   (:export #:fanout-exchange-routing
            #:headers-exchange-routing
            #:direct-exchange-routing
-           #:direct-exchange-routing-sync))
+           #:direct-exchange-routing-sync
+
+           #:blabbr
+           #:weathr
+           #:hello-world
+           #:hello-world-sync))

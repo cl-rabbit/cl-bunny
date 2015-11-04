@@ -5,21 +5,21 @@
 
   (with-connection ("amqp://" :one-shot t)
     (with-channel ()
-      (let ((x (fanout-exchange "nba.scores" :auto-delete t)))
+      (let ((x (exchange.fanout "nba.scores" :auto-delete t)))
         (->
-          (queue.declare "joe" :auto-delete t)
+          (queue.declare :name "joe" :auto-delete t)
           (queue.bind x)
           (subscribe (lambda (message)
                        (log:info "~a => joe"
                                  (babel:octets-to-string (message-body message))))))
         (->
-          (queue.declare "aaron" :auto-delete t)
+          (queue.declare :name "aaron" :auto-delete t)
           (queue.bind x)
           (subscribe (lambda (message)
                        (log:info "~a => aaron"
                                  (babel:octets-to-string (message-body message))))))
         (->
-          (queue.declare "bob" :auto-delete t)
+          (queue.declare :name "bob" :auto-delete t)
           (queue.bind x)
           (subscribe (lambda (message)
                        (log:info "~a => bob"
