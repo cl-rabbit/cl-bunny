@@ -24,7 +24,7 @@
                  :reader error-consumer-tag
                  :type string)))
 
-(define-condition connection-closed (error-base)
+(define-condition connection-closed-error (error-base)
   ((connection :initarg :connection
                :reader error-connection
                :type connection)))

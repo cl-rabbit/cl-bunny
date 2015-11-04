@@ -72,7 +72,7 @@
              (if ,error
                  (error ,error)
                  (values-list ,return)))
-           (error 'connection-closed :connection ,connection%)))))
+           (error 'connection-closed-error :connection ,connection%)))))
 
 (defun connection-close (&optional (connection *connection*))
   (when (connection-alive-p connection)

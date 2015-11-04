@@ -33,6 +33,7 @@
            ;; conditions
            #:authentication-error
            #:error-connection
+           #:connection-closed-error
 
            ;; high-level interfaces
            #:properties-headers
@@ -65,7 +66,7 @@
            #:exchange.default
            #:exchange.topic
            #:exchange.fanout
-           #:exchagne.direct
+           #:exchange.direct
            #:exchange.headers
            #:exchange.declare
            #:exchange.delete
