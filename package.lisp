@@ -22,7 +22,7 @@
 
            #:amqp-exchange-declare
            #:amqp-exchange-delete
-           
+
            #:amqp-basic-publish
            #:amqp-basic-consume
 
@@ -33,11 +33,11 @@
            ;; high-level interfaces
            #:properties-headers
            #:header-value
-           
+
            #:new-connection
            #:connection-start
            #:connection-close
-           
+
            #:connection-spec
            #:connection-spec-login
            #:connection-spec-password
@@ -49,20 +49,26 @@
            #:channel-open
            #:channel-prefetch
            #:channel-send
-           
+
            #:exchange-on-return-callback
 
            #:queue.declare
            #:queue.bind
            #:queue.purge
+           #:queue.unbind
            #:queue.delete
-           
-           #:default-exchange
-           #:topic-exchange
-           #:fanout-exchange
-           #:direct-exchange
-           #:headers-exchange
-           #:publish          
+
+           #:+default-exchange+
+           #:exchange.default
+           #:exchange.topic
+           #:exchange.fanout
+           #:exchagne.direct
+           #:exchange.headers
+           #:exchange.declare
+           #:exchange.delete
+           #:exchange.bind
+           #:exchange.unbind
+
+           #:publish
            #:consume
            #:subscribe))
-
