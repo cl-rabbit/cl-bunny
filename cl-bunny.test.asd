@@ -24,7 +24,11 @@
                  (:module "integration"
                   :serial t
                   :components
-                  ((:test-file "basic")))
+                  ((:test-file "basic")
+                   (:module "exchanges"
+                    :serial t
+                    :components
+                    ((:test-file "fanout")))))
                  (:module "unit"
                   :serial t
                   :components
