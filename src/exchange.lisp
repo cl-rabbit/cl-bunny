@@ -51,16 +51,15 @@
                      :internal internal
                      :nowait nowait
                      :arguments arguments)
-    (if-let ((re (get-registered-exchange channel exchange)))
-      re
-      (register-exchange channel (make-instance 'exchange
-                                                :channel channel
-                                                :name (exchange-name exchange)
-                                                :type type
-                                                :durable durable
-                                                :auto-delete auto-delete
-                                                :internal internal
-                                                :arguments arguments)))))
+    (or (get-registered-exchange channel exchange)
+        (register-exchange channel (make-instance 'exchange
+                                                  :channel channel
+                                                  :name (exchange-name exchange)
+                                                  :type type
+                                                  :durable durable
+                                                  :auto-delete auto-delete
+                                                  :internal internal
+                                                  :arguments arguments)))))
 
 (defun exchange.topic (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
