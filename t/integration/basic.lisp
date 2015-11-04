@@ -8,7 +8,7 @@
       (flet ((test-send (message)
                (with-connection ("amqp://" :one-shot t)
                  (with-channel ()
-                   (let ((x (default-exchange)))
+                   (let ((x (exchange.default)))
                      (setf queue (queue.declare :auto-delete t))
                      (publish x message :routing-key queue)))))
              (test-recv-sync ()
