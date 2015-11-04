@@ -25,7 +25,7 @@ debugger invoked on a SB-SYS:MEMORY-FAULT-ERROR in thread
 ```
 Try to compile sbcl with statically linked `librabbitmq` and `libffi` first.
 To do this you can go to `src/runtime/GNUmakefile` and
-make sure LINKFLAGS line looks like this: 
+make sure LINKFLAGS line looks like this:
 ```
 LINKFLAGS = -g  -Wl,--whole-archive <YOUR PATH TO>/librabbitmq.a <YOUR PATH TO>/libffi.a -Wl,--no-whole-archive -lcrypto -lssl
 ```
@@ -49,82 +49,72 @@ If you are new to RabbitMQ you may find the following links useful:
 (defun hello-world ()
   (with-connection ("amqp://" :one-shot t)
     (with-channel ()
-      (let ((x (default-exchange)))
+      (let ((x (exchange.default)))
         (->
-          (queue.declare "cl-bunny.examples.hello-world" :auto-delete t)
+          (queue.declare :name "cl-bunny.examples.hello-world" :auto-delete t)
           (subscribe (lambda (message)
                        (log:info "Received ~a"
                                  (message-body-string message)))))
         (publish x "Hello world!" :routing-key "cl-bunny.examples.hello-world"))
       (sleep 1))))
 ```
-#### Headers exchange (sugar-free)
-
-```lisp
-(with-connection ("amqp://" :one-shot t)
-  (with-channel ()
-    (let ((x (amqp-exchange-declare "headers" :type "headers"))
-          (q1 (amqp-queue-declare "" :exclusive t))
-          (q2 (amqp-queue-declare "" :exclusive t)))
-      (amqp-queue-bind q1 :exchange x :arguments '(("os" . "linux")
-                                                   ("cores" . 8)
-                                                   ("x-match" . "all")))
-      (amqp-queue-bind q2 :exchange x :arguments '(("os" . "osx")
-                                                   ("cores" . 4)
-                                                   ("x-match" . "any")))
-
-      (subscribe q1 (lambda (message)
-                      (log:info "~a received ~a"
-                                q1 (babel:octets-to-string (message-body message)))))
-      (subscribe q2 (lambda (message)
-                      (log:info "~a received ~a"
-                                q2 (babel:octets-to-string (message-body message)))))
-
-      (amqp-basic-publish "8 cores/Linux" :exchange x
-                                          :properties '((:headers . (("os" . "linux")
-                                                                     ("cores" . 8)))))
-      (amqp-basic-publish "8 cores/OS X"  :exchange x
-                                          :properties '((:headers . (("os" . "osx")
-                                                                     ("cores" . 8)))))
-      (amqp-basic-publish "4 cores/Linux" :exchange x
-                                          :properties '((:headers . (("os" . "linux")
-                                                                     ("cores" . 4)))))
-      (log:info "Waiting...")
-      (sleep 3)
-      (log:info "Disconnecting"))))
-```
 
 #### Headers Exchange
 ```lisp
 (with-connection ("amqp://" :one-shot t)
   (with-channel ()
-    (let* ((x (headers-exchange "headers" :auto-delete t))
+    (let* ((x (exchange.headers "headers" :auto-delete t))
            (q1 (->
-                 (queue.declare "" :exclusive t)
+                 (queue.declare :exclusive t)
                  (queue.bind x :arguments '(("os" . "linux")
                                             ("cores" . 8)
                                             ("x-match" . "all")))))
            (q2 (->
-                 (queue.declare "" :exclusive t)
+                 (queue.declare :exclusive t)
                  (queue.bind x :arguments '(("os" . "osx")
                                             ("cores" . 4)
                                             ("x-match" . "any"))))))
       (subscribe q1 (lambda (message)
-                      (log:info "~a received ~a"
-                                q1 (babel:octets-to-string (message-body message)))))
+                      (log:info "~a received ~a" q1 (message-body-string message))))
+
 
       (subscribe q2 (lambda (message)
-                      (log:info "~a received ~a"
-                                q2 (babel:octets-to-string (message-body message)))))
+                      (log:info "~a received ~a" q2 (message-body-string message))))
 
       (->
         x
-        (publish "8 cores/Linux" :properties '((:headers . (("os" . "linux")
-                                                            ("cores" . 8)))))
-        (publish "8 cores/OS X"  :properties '((:headers . (("os" . "osx")
-                                                            ("cores" . 8)))))
-        (publish "4 cores/Linux" :properties '((:headers . (("os" . "linux")
-                                                            ("cores" . 4))))))
+        (publish "8 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                         ("cores" . 8))))
+        (publish "8 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                         ("cores" . 8))))
+        (publish "8 cores/OS X"  :properties '(:headers (("os" . "osx")
+                                                         ("cores" . 8))))
+        (publish "4 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                         ("cores" . 4)))))
+
+      (log:info "Waiting...")
+      (sleep 3)
+      (log:info "Disconnecting"))))
+```
+#### Mandatory messages
+
+```lisp
+(with-connection ("amqp://" :one-shot t)
+  (with-channel ()
+    (let* ((x (exchange.default))
+           (q (queue.declare :exclusive t)))
+
+      (setf (exchange-on-return-callback x)
+            (lambda (returned-message)
+              (log:info "Got returned message ~a" (message-body-string returned-message))))
+
+      (subscribe q (lambda (message)                       
+                     (log:info "~a received ~a" q (message-body-string message))))
+
+      (publish x "This will NOT be returned" :mandatory t :routing-key q)
+      (publish x "This will be returned" :mandatory t
+                                         :routing-key (format nil "wefvvtrw~a" (random 10)))        
+
       (log:info "Waiting...")
       (sleep 3)
       (log:info "Disconnecting"))))
