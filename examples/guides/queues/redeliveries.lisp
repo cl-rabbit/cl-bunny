@@ -28,12 +28,12 @@
             (channel-prefetch ch3) 1)
 
       (log:info "Declaring direct exchange")
-      (let ((x (direct-exchange "amq.direct" :channel ch3 :durable t)))
+      (let ((x (exchange.direct "amq.direct" :channel ch3 :durable t)))
 
         (log:info "Declaring and subscribing to queue 1")
         (->
-          (queue.declare "cl-bunny.examples.acknowledgements.explicit" :auto-delete nil
-                                                                       :channel ch1)
+          (queue.declare :name "cl-bunny.examples.acknowledgements.explicit" :auto-delete nil
+                         :channel ch1)
           (queue.purge :channel ch1)
           (queue.bind x :channel ch1)
           (subscribe (lambda (message)
@@ -55,33 +55,34 @@
 
         (log:info "Declaring and subscribing to queue 2")
         (->
-          (queue.declare "cl-bunny.examples.acknowledgements.explicit" :auto-delete nil
-                                                                       :channel ch2)
+          (queue.declare :name "cl-bunny.examples.acknowledgements.explicit" :auto-delete nil
+                         :channel ch2)
           (queue.bind x :channel ch2)
           (subscribe (lambda (message)
                        ;; do some work
                        (sleep 0.2)
                        (message-ack message)
-                       (log:info "[consumer2] Got message #~a, redelivered?: ~a, ack-ed"                                 
+                       (log:info "[consumer2] Got message #~a, redelivered?: ~a, ack-ed"
                                  (message-header-value message "i")
                                  (message-redelivered-p message)))
                      :channel ch2))
 
         (bt:make-thread (lambda ()
-                          (ignore-errors
-                               (loop
-                                 for i from 0 do
-                                    (sleep 0.5)
-                                    (publish x (format nil "Message #~a" i)
-                                             :properties `((:headers . (("i" . ,i)
-                                                                        ("x" . "y")))))))))
+                          (handler-case
+                              (loop
+                                for i from 0 do
+                                   (sleep 0.5)
+                                   (print x)
+                                   (publish x (format nil "Message #~a" i) :properties `(:headers (("i" . ,i)
+                                                                                                   ("x" . "y")))))
+                            (connection-closed-error () (log:info "Connection closed as expected")))))
 
         (bt:make-thread (lambda ()
                           (sleep 4)
                           (connection-close connection1)
                           (log:info "----- Connection 1 is now closed (we pretend that it has crashed) -----")))
 
-        (sleep 7)
+        (sleep 13)
 
         (log:info "Closing connections 2 & 3")
         (connection-close connection2)
