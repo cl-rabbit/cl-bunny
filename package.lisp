@@ -62,7 +62,6 @@
            #:queue.unbind
            #:queue.delete
 
-           #:+default-exchange+
            #:exchange.default
            #:exchange.topic
            #:exchange.fanout

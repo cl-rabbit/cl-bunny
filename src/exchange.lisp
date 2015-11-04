@@ -28,19 +28,15 @@
   (print-unreadable-object (exchange s :type t :identity t)
     (format s "~s" (exchange-name exchange))))
 
-(defconstant +default-exchange+ (if (boundp '+default-exchange+)
-                                    (symbol-value '+default-exchange+)
-                                    (make-instance 'exchange :name ""
-                                                             :durable t)))
-
 (defmethod exchange-name ((exchange string))
   exchange)
 
 (defmethod exchange-channel ((exchange string))
   nil)
 
-(defun exchange.default ()
-  +default-exchange+)
+(let ((x))
+  (defun exchange.default ()
+    (or x (setf x (make-instance 'exchange :name "":durable t)))))
 
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
   (channel-send% channel
