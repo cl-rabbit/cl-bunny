@@ -17,6 +17,9 @@
    (open-p     :type boolean
                :initform nil
                :accessor channel-open-p)
+   (exchanges  :type hash-table
+               :initform (make-hash-table :test #'equal)
+               :reader channel-exchanges)
    (consumers  :type hash-table
                :initform (make-hash-table :test #'equal)
                :reader channel-consumers)
@@ -108,3 +111,17 @@
                   ,@body)
              (when (and ,close-val ,allocated-p)
                (amqp-channel-close *channel*))))))))
+
+
+(defun get-registered-exchange (channel name)
+  (gethash name (channel-exchanges channel)))
+
+(defun register-exchange (channel exchange)
+  (setf (gethash (exchange-name exchange) (channel-exchanges channel))
+        exchange))
+
+(defun default-exchange (&optional (channel *channel*))
+  (or
+   (get-registered-exchange channel "")
+   (register-exchange channel (make-instance 'exchange :channel channel
+                                                       :name ""))))

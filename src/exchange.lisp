@@ -34,9 +34,11 @@
 (defmethod exchange-channel ((exchange string))
   nil)
 
-(let ((x))
-  (defun exchange.default ()
-    (or x (setf x (make-instance 'exchange :name "":durable t)))))
+(defun exchange.default (&optional (channel *channel*))
+  (or
+   (get-registered-exchange channel "")
+   (register-exchange channel (make-instance 'exchange :name ""
+                                                       :durable t))))
 
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
   (channel-send% channel
@@ -49,14 +51,16 @@
                      :internal internal
                      :nowait nowait
                      :arguments arguments)
-    (make-instance 'exchange
-                   :channel channel
-                   :name (exchange-name exchange)
-                   :type type
-                   :durable durable
-                   :auto-delete auto-delete
-                   :internal internal
-                   :arguments arguments)))
+    (if-let ((re (get-registered-exchange channel exchange)))
+      re
+      (register-exchange channel (make-instance 'exchange
+                                                :channel channel
+                                                :name (exchange-name exchange)
+                                                :type type
+                                                :durable durable
+                                                :auto-delete auto-delete
+                                                :internal internal
+                                                :arguments arguments)))))
 
 (defun exchange.topic (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
@@ -83,6 +87,7 @@
                  args)))
 
 (defun exchange.delete (exchange &key (if-unused nil) (nowait nil) (channel *channel*))
+  ;; TODO: deregister exchange
   (channel-send% channel
       (make-instance 'amqp-method-exchange-delete
                      :exchange (exchange-name exchange)
