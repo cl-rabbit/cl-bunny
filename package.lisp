@@ -13,6 +13,7 @@
            #:message-routing-key
            #:message-properties
            #:message-body
+           #:message-body-string
            #:message-ack
            #:message-header-value
 

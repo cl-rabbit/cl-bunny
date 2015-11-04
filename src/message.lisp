@@ -68,3 +68,6 @@
 
 (defun message-property-value (message name)
   (assoc-value (print (message-properties message)) name))
+
+(defun message-body-string (message &optional (encoding :utf-8))
+  (babel:octets-to-string (message-body message) :encoding encoding))
