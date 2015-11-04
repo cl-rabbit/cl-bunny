@@ -4,8 +4,6 @@
   ((name :type string
          :initarg :name
          :reader queue-name)
-   (passive :initarg :passive
-            :reader queue-passive-p)
    (durable :initarg :durable
             :reader queue-durable-p)
    (exclusive :initarg :exclusive
@@ -17,6 +15,10 @@
    (mailbox :type safe-queue:mailbox
             :initarg :mailbox
             :initform (safe-queue:make-mailbox :name "AMQP Queue mailbox"))))
+
+(defmethod print-object ((queue queue) s)
+  (print-unreadable-object (queue s :type t :identity t)
+    (format s "~s" (queue-name queue))))
 
 ;; maybe there should be queue object with its own mailbox?
 
@@ -33,7 +35,6 @@
                                         :nowait nowait
                                         :arguments arguments)
     (values (make-instance 'queue :name (amqp-method-field-queue reply)
-                                  :passive passive
                                   :durable durable
                                   :exclusive exclusive
                                   :auto-delete auto-delete
