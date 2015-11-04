@@ -172,6 +172,9 @@
           (eventfd.close control-fd)
           (cl-rabbit:destroy-connection cl-rabbit-connection))))))
 
+(defmethod properties->alist ((properties list))
+  (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties)))
+
 (defmethod properties->alist ((properties amqp-basic-class-properties))
   (collectors:with-alist-output (add-prop)
     (when (slot-boundp properties 'amqp::content-type)
