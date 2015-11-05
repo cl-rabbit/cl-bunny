@@ -38,7 +38,8 @@
   (or
    (get-registered-exchange channel "")
    (register-exchange channel (make-instance 'exchange :name ""
-                                                       :durable t))))
+                                                       :durable t
+                                                       :channel channel))))
 
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
   (channel-send% channel
