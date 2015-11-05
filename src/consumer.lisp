@@ -86,7 +86,8 @@
       (let ((consumer-tag (apply #'amqp-basic-consume% (append (list (queue-name queue)) args))))
         (add-consumer channel queue consumer-tag type (if (eq type :async)
                                                           (wrap-async-subscribe-with-channel fn channel)
-                                                          fn))))))
+                                                          fn)))))
+  queue)
 
 (defun unsubscribe (consumer)
   (if (eq (consumer-type consumer) :async)
