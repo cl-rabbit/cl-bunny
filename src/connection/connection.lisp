@@ -32,7 +32,7 @@
     connection))
 
 (defun run-new-connection (spec)
-  (connection-start (new-connection spec)))
+  (connection.open (connection.new spec)))
 
 (defun setup-execute-in-connection-lambda (connection)
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
