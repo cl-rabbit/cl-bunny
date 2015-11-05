@@ -3,16 +3,16 @@
 (plan 1)
 
 (subtest "Basic publish/consume test"
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (let ((queue))
       (flet ((test-send (message)
-               (with-connection ("amqp://" :one-shot t)
+               (with-connection ("amqp://")
                  (with-channel ()
                    (let ((x (exchange.default)))
                      (setf queue (queue.declare :auto-delete t))
                      (publish x message :routing-key queue)))))
              (test-recv-sync ()
-               (with-connection ("amqp://" :one-shot t)
+               (with-connection ("amqp://")
                  (with-channel ()
                    (with-consumers
                        ((queue

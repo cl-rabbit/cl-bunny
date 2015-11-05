@@ -18,7 +18,7 @@
         (consume :one-shot t)))))
 
 (defun hello-world ()
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.default)))
         (->
@@ -30,7 +30,7 @@
       (sleep 1))))
 
 (defun hello-world-sync ()
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.default))
             (q "cl-bunny.examples.hello-world"))
@@ -44,3 +44,26 @@
               :type :sync))
           (publish x "Hello world!" :routing-key q)
           (consume :one-shot t))))))
+
+(defun hello-world-raw ()
+  (let ((*connection* (connection.new)))
+    (unwind-protect
+         (progn
+           (connection.open)
+           (let* ((*channel* (channel.open (channel.new))) ;; channel.new.open also works
+                  (x (exchange.default))
+                  (queue-name "cl-bunny.examples.hello-world"))
+             (unwind-protect
+                  (progn
+                    (->
+                      (queue.declare :name queue-name :auto-delete t)
+                      (subscribe (lambda (message)
+                                   (log:info "Received ~a"
+                                             (message-body-string message)))
+                                 :type :sync))
+                    (publish x "Hello world!" :routing-key queue-name)
+                    (consume :one-shot t))
+               (when *channel* ;; btw, channel will be closed with connection anyway
+                 (channel.close)))))
+      (when *connection*
+        (connection.close)))))

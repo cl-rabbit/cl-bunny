@@ -3,7 +3,7 @@
 (defun weathr ()
   (log:info "=> weathr example")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.topic "weathr" :auto-delete t)))
         (->

@@ -9,11 +9,14 @@
 
 (defun add-connection-to-pool (spec connection)
   (setf (gethash spec *connections-pool*)
-        connection))
+        connection
+        (connection-pool connection)
+        *connections-pool*))
 
 (defun remove-connection-from-pool (connection)
-  (bt:with-lock-held (*connections-pool-lock*)
-    (remhash (connection-spec connection) *connections-pool*)))
+  (when (connection-pool connection)
+    (bt:with-lock-held (*connections-pool-lock*)
+      (remhash (connection-spec connection) (connection-pool connection))))) 
 
 (defun find-or-run-new-connection (spec)
   (bt:with-lock-held (*connections-pool-lock*)

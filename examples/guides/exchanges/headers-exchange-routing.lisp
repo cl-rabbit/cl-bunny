@@ -3,7 +3,7 @@
 (defun headers-exchange-routing ()
   (log:info "=> Headers exchange routing")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let* ((x (exchange.headers "headers" :auto-delete t))
              (q1 (->

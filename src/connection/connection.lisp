@@ -14,12 +14,12 @@
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
 
-   (event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
+   (pool :initform nil :accessor connection-pool)
 
+   (event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
    (control-mailbox :initform (make-queue) :reader connection-control-mailbox)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
-
    (connection-thread :reader connection-thread)))
 
 (defun connection-alive-p (connection)
@@ -74,12 +74,13 @@
                  (values-list ,return)))
            (error 'connection-closed-error :connection ,connection%)))))
 
-(defun connection-close (&optional (connection *connection*))
+(defun connection.close (&optional (connection *connection*))
   (when (connection-alive-p connection)
     (execute-in-connection-thread (connection)
       (error 'stop-connection))
     (bt:join-thread (connection-thread connection)))
-  (remove-connection-from-pool connection))
+  (when (connection-pool connection)
+    (remove-connection-from-pool connection)))
 
 
-(defgeneric connection-send (connection channel method))
+(defgeneric connection.send (connection channel method))

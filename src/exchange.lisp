@@ -41,7 +41,7 @@
                                                        :durable t))))
 
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
       (make-instance 'amqp-method-exchange-declare
                      :exchange (exchange-name exchange)
                      :type type
@@ -87,7 +87,7 @@
 
 (defun exchange.delete (exchange &key (if-unused nil) (nowait nil) (channel *channel*))
   ;; TODO: deregister exchange
-  (channel-send% channel
+  (channel.send% channel
       (make-instance 'amqp-method-exchange-delete
                      :exchange (exchange-name exchange)
                      :if-unused if-unused
@@ -95,7 +95,7 @@
     exchange))
 
 (defun exchange.bind (destination source &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
       (make-instance 'amqp-method-exchange-bind
                      :destination destination
                      :source source
@@ -105,7 +105,7 @@
     destination))
 
 (defun exchange.unbind (destination source &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
       (make-instance 'amqp-method-exchange-unbind
                      :destination destination
                      :source source

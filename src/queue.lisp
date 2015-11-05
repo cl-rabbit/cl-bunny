@@ -33,7 +33,7 @@
   ;;         auto-delete t))
   ;; todo register exclusive queues
   ;; mark them as invalid on connection close
-  (channel-send% channel (make-instance 'amqp-method-queue-declare
+  (channel.send% channel (make-instance 'amqp-method-queue-declare
                                         :queue name
                                         :passive passive
                                         :durable durable
@@ -50,7 +50,7 @@
             (amqp-method-field-consumer-count reply))))
 
 (defun queue.bind (queue exchange &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
                  (make-instance 'amqp-method-queue-bind
                    :queue (queue-name queue)
                    :exchange (exchange-name exchange)
@@ -60,13 +60,13 @@
     queue))
 
 (defun queue.purge (queue &key (nowait) (channel *channel*))
-  (channel-send% channel (make-instance 'amqp-method-queue-purge
+  (channel.send% channel (make-instance 'amqp-method-queue-purge
                                         :queue (queue-name queue)
                                         :nowait nowait)
     queue))
 
 (defun queue.delete (queue &key (if-unused) (if-empty) (nowait) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
                  (make-instance 'amqp-method-queue-delete
                                 :queue (queue-name queue)
                                 :if-unused if-unused
@@ -75,7 +75,7 @@
     queue))
 
 (defun queue.unbind (queue exchange &key (routing-key "") (arguments nil) (channel *channel*))
-  (channel-send% channel
+  (channel.send% channel
                  (make-instance 'amqp-method-queue-unbind
                    :queue (queue-name queue)
                    :exchange (exchange-name exchange)

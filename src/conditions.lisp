@@ -29,6 +29,11 @@
                :reader error-connection
                :type connection)))
 
+(define-condition channel-closed-error (error-base)
+  ((channel :initarg :channel
+            :reader error-channel
+            :type channel)))
+
 (define-condition server-error (error-base)
   ((connection :initarg :connection
                :reader error-connection
