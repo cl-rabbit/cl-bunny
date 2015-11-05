@@ -31,7 +31,7 @@
               (progn
                 ,@body)
            (when ,shared-val
-             (connection-close)))))))
+             (connection.close)))))))
 
 (defun connection.open (&optional (connection *connection*))
   (connection-init connection)
@@ -207,12 +207,12 @@
     (when (slot-boundp properties 'amqp::cluster-id)
       (add-prop :cluster-id (amqp-property-cluster-id properties)))))
 
-(defmethod connection-send :before ((connection librabbitmq-connection) channel method)
+(defmethod connection.send :before ((connection librabbitmq-connection) channel method)
   (when (and (amqp-method-synchronous-p method)
              (amqp-method-field-nowait method))
     (log:warn "Librabbitmq connection: nowait not supported")))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-exchange-declare))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-exchange-declare))
   (cl-rabbit:exchange-declare (connection-cl-rabbit-connection connection)
                               (channel-id channel)
                               (amqp-method-field-exchange method)
@@ -224,14 +224,14 @@
                               :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-exchange-declare-ok))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-exchange-delete))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-exchange-delete))
   (cl-rabbit:exchange-delete (connection-cl-rabbit-connection connection)
                              (channel-id channel)
                              (amqp-method-field-exchange method)
                              :if-unused (amqp-method-field-if-unused method))
   (make-instance 'amqp-method-exchange-delete-ok))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-exchange-bind))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-exchange-bind))
   (cl-rabbit:exchange-bind (connection-cl-rabbit-connection connection)
                            (channel-id channel)
                            :destination (amqp-method-field-destination method)
@@ -240,7 +240,7 @@
                            :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-exchange-bind-ok))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-exchange-unbind))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-exchange-unbind))
   (cl-rabbit:exchange-unbind (connection-cl-rabbit-connection connection)
                              (channel-id channel)
                              :destination (amqp-method-field-destination method)
@@ -249,7 +249,7 @@
                              :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-exchange-unbind-ok))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-declare))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-declare))
   (multiple-value-bind (queue message-count consumer-count)
       (cl-rabbit:queue-declare (connection-cl-rabbit-connection connection)
                                (channel-id channel)
@@ -264,7 +264,7 @@
                    :message-count message-count
                    :consumer-count consumer-count)))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-bind))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-bind))
   (cl-rabbit:queue-bind (connection-cl-rabbit-connection connection)
                         (channel-id channel)
                         :queue (amqp-method-field-queue method)
@@ -273,7 +273,7 @@
                         :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-queue-bind-ok))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-purge))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-purge))
   (multiple-value-bind (message-count)
       (cl-rabbit:queue-purge (connection-cl-rabbit-connection connection)
                              (channel-id channel)
@@ -281,7 +281,7 @@
     (make-instance 'amqp-method-queue-purge-ok
                    :message-count message-count)))
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-queue-delete))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-delete))
   (multiple-value-bind (message-count)
       (cl-rabbit:queue-delete (connection-cl-rabbit-connection connection)
                               (channel-id channel)
@@ -292,7 +292,7 @@
                    :message-count message-count)))
 
 
-(defmethod connection-send ((connection librabbitmq-connection) channel (method amqp-method-basic-publish))
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-publish))
   (cl-rabbit:basic-publish (connection-cl-rabbit-connection connection)
                            (channel-id channel)
                            :exchange (amqp-method-field-exchange method)

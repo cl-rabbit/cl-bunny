@@ -18,7 +18,7 @@
                        ((queue
                          (lambda (message)
                            (message-ack message)
-                           (return-from test-recv-sync (babel:octets-to-string (message-body message))))
+                           (return-from test-recv-sync (message-body-string message)))
                          :type :sync))
                      (consume :one-shot t))))))
         (test-send "Hello World!")
