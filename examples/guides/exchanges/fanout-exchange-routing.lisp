@@ -3,7 +3,7 @@
 (defun fanout-exchange-routing ()
   (log:info "=> Fanout exchange routing")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.declare "examples.ping" :type "fanout")))
         (loop for i from 0 below 10

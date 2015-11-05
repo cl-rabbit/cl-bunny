@@ -4,7 +4,7 @@
 
 (subtest "fanout-exchange-routing" ()
   (let ((queues (make-hash-table)))
-    (with-connection ("amqp://" :one-shot t)
+    (with-connection ("amqp://")
       (with-channel ()
         (let ((x (exchange.fanout "examples.ping")))
           (loop for i from 0 below 10

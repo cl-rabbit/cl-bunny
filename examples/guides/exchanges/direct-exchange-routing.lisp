@@ -4,7 +4,7 @@
 (defun direct-exchange-routing ()
   (log:info "=> Direct exchange routing")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.declare "examples.imaging" :auto-delete t))
             (q1 (queue.declare :auto-delete t))
@@ -31,7 +31,7 @@
 (defun direct-exchange-routing-sync ()
   (log:info "=> Direct exchange routing")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.declare "examples.imaging" :auto-delete t))
             (q1 (queue.declare :auto-delete t))

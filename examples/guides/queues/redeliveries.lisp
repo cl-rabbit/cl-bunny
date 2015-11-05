@@ -3,24 +3,24 @@
 (defun redeliveries ()
   (log:info "=> Subscribing for messages using explicit acknowledgements model")
 
-  (let ((connection1 (new-connection))
-        (connection2 (new-connection))
-        (connection3 (new-connection)))
+  (let ((connection1 (connection.new))
+        (connection2 (connection.new))
+        (connection3 (connection.new)))
 
     (log:info "Starting connections")
-    (connection-start connection1)
-    (connection-start connection2)
-    (connection-start connection3)
+    (connection.open connection1)
+    (connection.open connection2)
+    (connection.open connection3)
 
     (log:info "Setting-up channels")
-    (let ((ch1 (new-channel connection1))
-          (ch2 (new-channel connection2))
-          (ch3 (new-channel connection3)))
+    (let ((ch1 (channel.new :connection connection1))
+          (ch2 (channel.new :connection connection2))
+          (ch3 (channel.new :connection connection3)))
 
       (log:info "Opening channels")
-      (channel-open ch1)
-      (channel-open ch2)
-      (channel-open ch3)
+      (channel.open ch1)
+      (channel.open ch2)
+      (channel.open ch3)
 
       (log:info "Setting prefetch size")
       (setf (channel-prefetch ch1) 4
@@ -72,18 +72,17 @@
                               (loop
                                 for i from 0 do
                                    (sleep 0.5)
-                                   (print x)
                                    (publish x (format nil "Message #~a" i) :properties `(:headers (("i" . ,i)
                                                                                                    ("x" . "y")))))
-                            (connection-closed-error () (log:info "Connection closed as expected")))))
+                            (channel-closed-error () (log:info "Connection closed as expected")))))
 
         (bt:make-thread (lambda ()
                           (sleep 4)
-                          (connection-close connection1)
+                          (connection.close connection1)
                           (log:info "----- Connection 1 is now closed (we pretend that it has crashed) -----")))
 
-        (sleep 13)
+        (sleep 7)
 
         (log:info "Closing connections 2 & 3")
-        (connection-close connection2)
-        (connection-close connection3)))))
+        (connection.close connection2)
+        (connection.close connection3)))))

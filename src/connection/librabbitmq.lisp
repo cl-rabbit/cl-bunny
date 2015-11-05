@@ -7,7 +7,7 @@
 
 
 
-(defun new-connection (&optional (spec "amqp://"))
+(defun connection.new (&optional (spec "amqp://") &key shared)
   (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
                                                      :connection (cl-rabbit:new-connection))))
     (setup-execute-in-connection-lambda connection)
@@ -15,25 +15,25 @@
 
 (defun parse-with-connection-params (params)
   (etypecase params
-    (string (list params :one-shot nil))
-    (symbol (list params :one-shot nil))
+    (string (list params :shared t))
+    (symbol (list params :shared t))
     (list params)))
 
 (defmacro with-connection (params &body body)
-  (destructuring-bind (spec &key one-shot) (parse-with-connection-params params)
-    (with-gensyms (connection-spec-val one-shot-val)
+  (destructuring-bind (spec &key shared) (parse-with-connection-params params)
+    (with-gensyms (connection-spec-val shared-val)
       `(let* ((,connection-spec-val ,spec)
-              (,one-shot-val ,one-shot)
-              (*connection* (if ,one-shot-val
+              (,shared-val ,shared)
+              (*connection* (if ,shared-val
                                 (run-new-connection ,connection-spec-val)
                                 (find-or-run-new-connection ,connection-spec-val))))
          (unwind-protect
               (progn
                 ,@body)
-           (when ,one-shot-val
+           (when ,shared-val
              (connection-close)))))))
 
-(defun connection-start (connection)
+(defun connection.open (&optional (connection *connection*))
   (connection-init connection)
   (setf (slot-value connection 'connection-thread)
         (bt:make-thread (lambda () (connection-loop connection))
@@ -169,6 +169,7 @@
             else
             do (iolib:event-dispatch event-base :one-shot t))
         (stop-connection ()
+          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p channel) nil)) (connection-channels connection))
           (eventfd.close control-fd)
           (cl-rabbit:destroy-connection cl-rabbit-connection))))))
 

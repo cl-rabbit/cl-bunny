@@ -3,7 +3,7 @@
 (defun blabbr ()
   (log:info "=> blabbr example")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let ((x (exchange.fanout "nba.scores" :auto-delete t)))
         (->

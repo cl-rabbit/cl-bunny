@@ -3,7 +3,7 @@
 (defun mandatory-messages ()
   (log:info "=> Publishing messages as mandatory")
 
-  (with-connection ("amqp://" :one-shot t)
+  (with-connection ("amqp://")
     (with-channel ()
       (let* ((x (exchange.default))
              (q (queue.declare :exclusive t)))

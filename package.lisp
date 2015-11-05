@@ -34,14 +34,16 @@
            #:authentication-error
            #:error-connection
            #:connection-closed-error
+           #:channel-closed-error
 
            ;; high-level interfaces
            #:properties-headers
            #:header-value
 
-           #:new-connection
-           #:connection-start
-           #:connection-close
+           #:*connection*
+           #:connection.new
+           #:connection.open
+           #:connection.close
 
            #:connection-spec
            #:connection-spec-login
@@ -50,10 +52,13 @@
            #:connection-spec-port
            #:connection-spec-vhost
 
-           #:new-channel
-           #:channel-open
-           #:channel-prefetch
-           #:channel-send
+           #:*channel*
+           #:channel.new
+           #:channel.open
+           #:channel.new.open
+           #:channel.prefetch
+           #:channel.send
+           #:channel.close
 
            #:exchange-on-return-callback
 

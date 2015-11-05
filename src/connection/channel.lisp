@@ -35,13 +35,19 @@
 (defvar *channel*)
 (defconstant +max-channels+ 320)
 
-(defun new-channel (connection &optional (channel-id (next-channel-id (connection-channel-id-allocator connection))))
+(defun channel.new (&key (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
   (make-instance 'channel :connection connection
                           :id channel-id))
 
-(defun channel-open (channel)
+(defun channel.open (channel)
   (amqp-channel-open channel)
   channel)
+
+(defun channel.new.open (&optional (connection *connection*))
+  (channel.open (channel.new :connection connection)))
+
+(defun channel.close (&optional (channel *channel*))
+  (amqp-channel-close channel))
 
 (defun (setf channel-prefetch) (value channel &key global)
   (amqp-basic-qos value :global global :channel channel))
@@ -56,41 +62,37 @@
 (defgeneric channel-send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 
-(defmethod channel-send :around (channel method)
-  (if (connection-alive-p (channel-connection channel))
-      (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
-          ;; we are inside of connection thread, just return promise
-          (call-next-method)
-          ;; we are calling from different thread,
-          ;; for now we accept this as call from regular sync lisp code
-          ;; use lparallel promise to lift errors
-          (let ((promise (lparallel:promise)))
-            (execute-in-connection-thread ((channel-connection channel))
-              (blackbird:catcher
-               (blackbird:attach
-                (channel-send channel method)
-                (lambda (&rest vals)
-                  (lparallel:fulfill promise (values-list vals))))
-               (t (e) (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
-            (lparallel:force promise)))
-      (error 'connection-closed-error :connection (channel-connection channel))))
+(defmethod channel.send :around (channel method)
+  (assert (channel-open-p channel) () 'channel-closed-error :channel channel)
+  (assert (connection-alive-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel))
+  (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
+      ;; we are inside of connection thread, just return promise
+      (call-next-method)
+      ;; we are calling from different thread,
+      ;; for now we accept this as call from regular sync lisp code
+      ;; use lparallel promise to lift errors
+      (let ((promise (lparallel:promise)))
+        (execute-in-connection-thread ((channel-connection channel))
+          (blackbird:catcher
+           (blackbird:attach
+            (channel-send channel method)
+            (lambda (&rest vals)
+              (lparallel:fulfill promise (values-list vals))))
+           (t (e) (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
+        (lparallel:force promise))))
 
-(defmethod channel-send (channel method)
-  (connection-send (channel-connection channel) channel method))
+(defmethod channel.send (channel method)
+  (connection.send (channel-connection channel) channel method))
 
-(defmacro channel-send% (channel method &body body)
+(defmacro channel.send% (channel method &body body)
   (with-gensyms (cb)
-    `(let ((reply (channel-send ,channel ,method)))
+    `(let ((reply (channel.send ,channel ,method)))
        (flet ((,cb (reply)
                 (declare (ignorable reply))
                 ,@body))
          (if (blackbird:promisep reply)
              (blackbird:attach reply (function ,cb))
              (,cb reply))))))
-
-(defun allocate-and-open-new-channel (connection)
-  (let ((channel (new-channel connection)))
-    (channel-open channel)))
 
 (defun parse-with-channel-params (params)
   (etypecase params
@@ -106,13 +108,13 @@
          (multiple-value-bind (*channel* ,allocated-p) (if ,channel-val
                                                            ,channel-val
                                                            (values
-                                                            (allocate-and-open-new-channel *connection*)
+                                                            (channel.new.open *connection*)
                                                             t))
            (unwind-protect
                 (progn
                   ,@body)
              (when (and ,close-val ,allocated-p)
-               (amqp-channel-close *channel*))))))))
+               (channel.close *channel*))))))))
 
 
 (defun get-registered-exchange (channel name)

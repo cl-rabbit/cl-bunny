@@ -7,7 +7,7 @@
   (queue-name routing-key))
 
 (defun publish (exchange content &key (routing-key "") (mandatory nil) (immediate nil) (channel *channel*) (properties (make-instance 'amqp-basic-class-properties)))
-  (channel-send% (or (exchange-channel exchange) channel)
+  (channel.send% (or (exchange-channel exchange) channel)
       (make-instance 'amqp-method-basic-publish
                      :exchange (exchange-name exchange)
                      :routing-key (routing-key routing-key)
@@ -15,5 +15,4 @@
                      :immediate immediate
                      :content content
                      :content-properties properties)
-    exchange))
-
+      exchange))
