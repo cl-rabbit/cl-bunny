@@ -11,7 +11,8 @@
   (setf (gethash spec *connections-pool*)
         connection
         (connection-pool connection)
-        *connections-pool*))
+        *connections-pool*)
+  connection)
 
 (defun remove-connection-from-pool (connection)
   (when (connection-pool connection)

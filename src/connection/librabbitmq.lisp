@@ -15,8 +15,8 @@
 
 (defun parse-with-connection-params (params)
   (etypecase params
-    (string (list params :shared t))
-    (symbol (list params :shared t))
+    (string (list params :shared nil))
+    (symbol (list params :shared nil))
     (list params)))
 
 (defmacro with-connection (params &body body)
@@ -25,8 +25,8 @@
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
               (*connection* (if ,shared-val
-                                (run-new-connection ,connection-spec-val)
-                                (find-or-run-new-connection ,connection-spec-val))))
+                                (find-or-run-new-connection ,connection-spec-val)
+                                (run-new-connection ,connection-spec-val))))
          (unwind-protect
               (progn
                 ,@body)
