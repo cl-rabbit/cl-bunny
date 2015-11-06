@@ -25,6 +25,7 @@
                   :serial t
                   :components
                   ((:test-file "basic")
+                   (:test-file "confirm")
                    (:module "exchanges"
                     :serial t
                     :components
