@@ -58,6 +58,8 @@
            #:channel.new.open
            #:channel.prefetch
            #:channel.send
+           #:channel.confirm
+           #:channel.wait-confirms
            #:channel.close
 
            #:exchange-on-return-callback

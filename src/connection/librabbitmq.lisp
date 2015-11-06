@@ -79,6 +79,15 @@
             (funcall callback message)
             (log:warn "Got unhandled returned message"))))))
 
+(defun process-ack-method (state method channel)
+  (assert (typep channel 'confirm-channel)) ;; TODO: specialize error
+  (let ((basic-ack
+          (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                     '(:struct cl-rabbit::amqp-basic-ack-t))))
+    (channel.receive channel
+                     (make-instance 'amqp-method-basic-ack :delivery-tag (getf basic-ack 'cl-rabbit::delivery-tag)
+                                                           :multiple (getf basic-ack 'cl-rabbit::multiple)))))
+
 ;;; see https://github.com/alanxz/rabbitmq-c/blob/master/examples/amqp_consumer.c
 (defun process-unexpected-frame (connection)
   (let ((cl-rabbit-connection (connection-cl-rabbit-connection connection))
@@ -103,7 +112,7 @@
                 (if-let ((channel (gethash channel-id channels)))
                   (if (channel-open-p channel)
                       (case method-id
-                        (#.cl-rabbit::+amqp-basic-ack-method+ (error "Ack not supported yet"))
+                        (#.cl-rabbit::+amqp-basic-ack-method+ (process-ack-method state method channel))
                         (#.cl-rabbit::+amqp-basic-return-method+
                          ;;(cl-rabbit::amqp-put-back-frame state frame)
                          (log:debug "Got return method, reading message")
@@ -301,3 +310,7 @@
                            :immediate (amqp-method-field-immediate method)
                            :content (amqp-method-content method)
                            :content-properties (properties->alist (amqp-method-content-properties method))))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
+  (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
+                            (channel-id channel)))

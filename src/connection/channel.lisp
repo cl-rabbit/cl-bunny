@@ -32,6 +32,23 @@
                        :initform nil
                        :accessor exchange-on-return-callback)))
 
+(defclass confirm-channel (channel)
+  ((counter :initform 1 :type fixnum :accessor confirm-channel-counter)
+   (unconfirmed-set :initform (make-hash-table :test 'eql) :accessor channel-unconfirmed-set)
+   (lock :initform (bt:make-lock) :reader confirm-channel-lock)
+   (condition-var :initform (bt:make-condition-variable) :reader confirm-channel-condition-var)))
+
+(defmethod channel.wait-confirms% ((channel confirm-channel) timeout)
+  (bt:with-lock-held ((confirm-channel-lock channel))
+    (when (= 0 (hash-table-count (channel-unconfirmed-set channel)))
+      (return-from channel.wait-confirms% t))
+    (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
+        (error "Waiting for confirms on connection thread not supported yet")
+        (sb-thread:condition-wait (confirm-channel-condition-var channel) (confirm-channel-lock channel) :timeout timeout))))
+
+(defun channel.wait-confirms (&key (channel *channel*) timeout)
+  (channel.wait-confirms% channel timeout))
+
 (defvar *channel*)
 (defconstant +max-channels+ 320)
 
@@ -93,6 +110,46 @@
          (if (blackbird:promisep reply)
              (blackbird:attach reply (function ,cb))
              (,cb reply))))))
+
+(defun channel.confirm (&optional (channel *channel*))
+  (channel.send% channel (make-instance 'amqp-method-confirm-select)
+    (change-class channel 'confirm-channel)))
+
+(defgeneric channel.receive (channel method))
+
+(defmethod channel.receive ((channel confirm-channel) (method amqp-method-basic-ack))
+  (log:debug "Ack received ~a" method)
+  (bt:with-lock-held ((confirm-channel-lock channel))
+    (let ((unconfirmed-set (channel-unconfirmed-set channel)))
+      (unless
+          (remhash (amqp-method-field-delivery-tag method) unconfirmed-set)
+        (error "Unknown delivery-tag ~a" (amqp-method-field-delivery-tag method)))
+      (when (amqp-method-field-multiple method)
+          (with-hash-table-iterator (next-entry unconfirmed-set)
+            (loop (multiple-value-bind (more delivery-tag message) (next-entry)
+                    (declare (ignore message))
+                    (unless more (return nil))
+                    (when (< delivery-tag (amqp-method-field-delivery-tag method))
+                      (remhash delivery-tag unconfirmed-set)))))))
+    (bt:condition-notify (confirm-channel-condition-var channel))))
+
+(defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)))
+  (channel.send% channel
+      (make-instance 'amqp-method-basic-publish
+                     :exchange exchange
+                     :routing-key (routing-key routing-key)
+                     :mandatory mandatory
+                     :immediate immediate
+                     :content content
+                     :content-properties properties)))
+
+(defmethod channel.publish ((channel confirm-channel) content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)))
+  (assert (channel-open-p channel) () 'channel-closed-error :channel channel)
+  (bt:with-lock-held ((confirm-channel-lock channel))
+    (let ((unconfirmed-set (channel-unconfirmed-set channel)))
+      (setf (gethash (confirm-channel-counter channel) unconfirmed-set) content))
+    (incf (confirm-channel-counter channel))) ;; check for max counter value here
+  (call-next-method))
 
 (defun parse-with-channel-params (params)
   (etypecase params
