@@ -218,6 +218,7 @@
 
 (defmethod connection.send :before ((connection librabbitmq-connection) channel method)
   (when (and (amqp-method-synchronous-p method)
+             (not (= (amqp-method-class-id method) 90)) ;; tx method don't have nowait field
              (amqp-method-field-nowait method))
     (log:warn "Librabbitmq connection: nowait not supported")))
 
@@ -313,4 +314,20 @@
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
-                            (channel-id channel)))
+                            (channel-id channel))
+  (make-instance 'amqp-method-confirm-select-ok))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-tx-select))
+  (cl-rabbit:tx-select (connection-cl-rabbit-connection connection)
+                       (channel-id channel))
+  (make-instance 'amqp-method-tx-select-ok))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-tx-commit))
+  (cl-rabbit:tx-commit (connection-cl-rabbit-connection connection)
+                       (channel-id channel))
+  (make-instance 'amqp-method-tx-commit-ok))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-tx-rollback))
+  (cl-rabbit:tx-rollback (connection-cl-rabbit-connection connection)
+                         (channel-id channel))
+  (make-instance 'amqp-method-tx-rollback-ok))

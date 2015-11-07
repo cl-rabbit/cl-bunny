@@ -53,6 +53,7 @@
   (amqp-basic-qos value :global global :channel channel))
 
 (defun channel-consume-message (channel message &key return)
+  (break)
   (if-let ((consumer (find-message-consumer channel message)))
     (if (eq :sync (consumer-type consumer))
         (mailbox-send-message (channel-mailbox channel) message)

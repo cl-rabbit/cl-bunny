@@ -67,9 +67,9 @@
   ;; maybe replace it with flet?
   (let ((mailbox (channel-mailbox channel)))
     (loop for message = (mailbox-receive-message mailbox :timeout timeout)
-          while message
           do
-             (dispatch-consumed-message channel message)
+             (when message
+               (dispatch-consumed-message channel message))
              (when one-shot
                (return)))))
 
