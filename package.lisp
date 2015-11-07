@@ -59,8 +59,12 @@
            #:channel.prefetch
            #:channel.send
            #:channel.confirm
+           #:channel.tx
            #:channel.wait-confirms
            #:channel.close
+
+           #:tx.commit
+           #:tx.rollback
 
            #:exchange-on-return-callback
 

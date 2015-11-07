@@ -38,4 +38,5 @@
                (:file "src/consumer")
                (:file "src/basic")
                (:file "src/confirm")
+               (:file "src/tx")
                (:file "src/amqp")))

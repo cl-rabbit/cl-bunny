@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan 1)
+(plan 2)
 
 (subtest "Batch Publisher Acknowledgements test"
   (with-connection ("amqp://")
