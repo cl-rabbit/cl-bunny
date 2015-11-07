@@ -37,4 +37,5 @@
                (:file "src/exchange")
                (:file "src/consumer")
                (:file "src/basic")
+               (:file "src/confirm")
                (:file "src/amqp")))
