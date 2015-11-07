@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan 1)
+(plan 3)
 
 (subtest "Test channel mode"
   (with-connection ("amqp://")
