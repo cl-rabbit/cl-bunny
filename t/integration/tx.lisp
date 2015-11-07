@@ -12,7 +12,7 @@
     (with-channel ()
       (is-error (tx.rollback) 'error "Can't tx.rollback on non-tx channel"))
     (with-channel ()
-      (ok (channel.tx))
+      (is (channel.tx) t)
       (ok (tx.commit))
       (ok (tx.rollback)))))
 
@@ -58,6 +58,6 @@
                        :type :sync))
                    (consume :one-shot t :timeout 3)))))
         (test-send "Hello World!")
-        (is (test-recv-sync) nil)))))
+        (is (test-recv-sync) nil "Publish canceled with tx.rollback")))))
 
 (finalize)
