@@ -160,7 +160,8 @@
                             control-fd
                             :read (lambda (fd e ex)
                                     (declare (ignorable fd e ex))
-                                    (log:debug "Got lambda to execute on connection thread ~a" (eventfd.read control-fd))
+                                    (eventfd.read control-fd)
+                                    (log:debug "Got lambda to execute on connection thread")
                                     (loop for lambda = (dequeue control-mailbox)
                                           while lambda
                                           do (funcall lambda))))

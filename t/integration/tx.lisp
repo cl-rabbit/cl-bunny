@@ -54,7 +54,7 @@
                      ((queue
                        (lambda (message)
                          (message-ack message)
-                         (return-from test-recv-sync (message-body-striang message)))
+                         (return-from test-recv-sync (message-body-string message)))
                        :type :sync))
                    (consume :one-shot t :timeout 3)))))
         (test-send "Hello World!")
