@@ -30,7 +30,7 @@
          (unwind-protect
               (progn
                 ,@body)
-           (when ,shared-val
+           (unless ,shared-val
              (connection.close)))))))
 
 (defun connection.open (&optional (connection *connection*))
