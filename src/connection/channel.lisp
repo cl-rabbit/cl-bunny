@@ -16,7 +16,7 @@
                :reader channel-id)
    (open-p     :type boolean
                :initform nil
-               :accessor channel-open-p)
+               :accessor channel-open-p%)
    (exchanges  :type hash-table
                :initform (make-hash-table :test #'equal)
                :reader channel-exchanges)
@@ -35,22 +35,14 @@
 (defvar *channel*)
 (defconstant +max-channels+ 320)
 
+(defmethod channel-open-p (&optional (channel *channel*))
+  (channel-open-p% channel))
+
 (defun channel.new (&key (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
-  (make-instance 'channel :connection connection
-                          :id channel-id))
-
-(defun channel.open (channel)
-  (amqp-channel-open channel)
-  channel)
-
-(defun channel.new.open (&optional (connection *connection*))
-  (channel.open (channel.new :connection connection)))
-
-(defun channel.close (&optional (channel *channel*))
-  (amqp-channel-close channel))
-
-(defun (setf channel-prefetch) (value channel &key global)
-  (amqp-basic-qos value :global global :channel channel))
+  (let ((channel (make-instance 'channel :connection connection
+                                         :id channel-id)))
+    (connection.register-channel channel)
+    channel))
 
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))
@@ -63,8 +55,8 @@
   (:documentation "API Endpoint, hides transport implementation"))
 
 (defmethod channel.send :around (channel method)
-  (assert (channel-open-p channel) () 'channel-closed-error :channel channel)
-  (assert (connection-alive-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel))
+  (assert (or (typep method 'amqp-method-channel-open) (channel-open-p% channel)) () 'channel-closed-error :channel channel)
+  (assert (connection-open-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel))
   (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
       ;; we are inside of connection thread, just return promise
       (call-next-method)
@@ -78,7 +70,17 @@
             (channel.send channel method)
             (lambda (&rest vals)
               (lparallel:fulfill promise (values-list vals))))
-           (t (e) (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
+           (amqp-channel-error (e)
+                               (log:error "~a" e)
+                               (channel.close-ok% channel)
+                               (lparallel:fulfill promise (lparallel.promise::wrap-error e)))
+           (amqp-connection-error (e)
+              (log:error "~a" e)
+              (connection.close-ok% (channel-connection channel)
+                                    (lambda ()
+                                      (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
+           (t (e)
+              (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
         (lparallel:force promise))))
 
 (defmethod channel.send (channel method)
@@ -93,6 +95,48 @@
          (if (blackbird:promisep reply)
              (blackbird:attach reply (function ,cb))
              (,cb reply))))))
+
+(defun channel.open (&optional (channel *channel*))
+  (assert (not (channel-open-p% channel)) nil 'error "Channel already open") ;; TODO: specialize error
+  (channel.send% channel
+                 (make-instance 'amqp-method-channel-open)
+    (setf (channel-open-p% channel) t)
+    channel))
+
+(defun channel.new.open (&optional (connection *connection*))
+  (channel.open (channel.new :connection connection)))
+
+(defun channel.flow (active &key (channel *channel*))
+  (channel.send% channel
+                 (make-instance 'amqp-method-channel-flow
+                        :active active)
+    (assert (eql active (amqp-method-field-active reply)) nil 'error "channel-flow-ok has different active value") ;; TODO: specialize error
+    t))
+
+(defun channel.flow-ok (active &key (channel *channel*))
+  (channel.send% channel
+                 (make-instance 'amqp-method-channel-flow-ok
+                                :active active)))
+
+(defun channel.close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
+  (when (channel-open-p% channel)
+    (channel.send% channel
+        (make-instance 'amqp-method-channel-close
+                       :reply-code reply-code
+                       :reply-text reply-text
+                       :class-id class-id
+                       :method-id method-id)
+      (setf (channel-open-p% channel) nil)
+      (connection.deregister-channel channel))))
+
+(defun channel.close-ok% (channel)
+  (channel.send% channel
+                 (make-instance 'amqp-method-channel-close-ok)
+    (setf (channel-open-p% channel) nil)
+    (connection.deregister-channel channel)))
+
+(defun (setf channel-prefetch) (value channel &key global)
+  (amqp-basic-qos value :global global :channel channel))
 
 (defgeneric channel.receive (channel method))
 
@@ -125,8 +169,10 @@
            (unwind-protect
                 (progn
                   ,@body)
-             (when (and ,close-val ,allocated-p)
-               (channel.close *channel*))))))))
+             (when (and ,close-val ,allocated-p
+                        (channel-open-p% *channel*)
+                        (connection-open-p (channel-connection *channel*)))
+               (channel.close +amqp-reply-success+ 0 0 :channel *channel*))))))))
 
 
 (defun get-registered-exchange (channel name)

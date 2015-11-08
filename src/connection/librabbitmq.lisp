@@ -30,7 +30,7 @@
          (unwind-protect
               (progn
                 ,@body)
-           (unless ,shared-val
+           (when (and (not ,shared-val) (connection-open-p *connection*))
              (connection.close)))))))
 
 (defun connection.open (&optional (connection *connection*))
@@ -110,7 +110,7 @@
               (labels ((warn-nonexistent-channel ()
                          (log:warn "Message received for closed channel: ~a" channel-id)))
                 (if-let ((channel (gethash channel-id channels)))
-                  (if (channel-open-p channel)
+                  (if (channel-open-p% channel)
                       (case method-id
                         (#.cl-rabbit::+amqp-basic-ack-method+ (process-ack-method state method channel))
                         (#.cl-rabbit::+amqp-basic-return-method+
@@ -141,7 +141,7 @@
              (labels ((warn-nonexistent-channel ()
                         (log:warn "Message received for closed channel: ~a" channel-id)))
                (if-let ((channel (gethash channel-id channels)))
-                 (if (channel-open-p channel)
+                 (if (channel-open-p% channel)
                      (channel-consume-message channel (create-message channel envelope))
                      ;; ELSE: We won't deliver messages to a closed channel
                      (log:warn "Incoming message on closed channel: ~s" channel))
@@ -171,17 +171,23 @@
                                     (declare (ignorable fd e ex))
                                     (wait-for-frame connection)))
 
-      (handler-case
-          (loop
-            if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
-                   (cl-rabbit::frames-enqueued cl-rabbit-connection))
-            do (wait-for-frame connection)
-            else
-            do (iolib:event-dispatch event-base :one-shot t))
-        (stop-connection ()
-          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p channel) nil)) (connection-channels connection))
-          (eventfd.close control-fd)
-          (cl-rabbit:destroy-connection cl-rabbit-connection))))))
+      (let ((ret
+              (catch 'stop-connection
+                   (loop
+                     if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
+                            (cl-rabbit::frames-enqueued cl-rabbit-connection))
+                     do (wait-for-frame connection)
+                     else
+                     do (iolib:event-dispatch event-base :one-shot t)))))
+        (log:debug "Stopping AMQP connection")
+        (when (connection-pool connection)
+          (remove-connection-from-pool connection))
+        (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
+        (log:debug "closed-all-channels")
+        (eventfd.close control-fd)
+        (cl-rabbit:destroy-connection cl-rabbit-connection)
+        (if (functionp ret)
+            (funcall ret))))))
 
 (defmethod properties->alist ((properties list))
   (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties)))
@@ -219,9 +225,59 @@
 
 (defmethod connection.send :before ((connection librabbitmq-connection) channel method)
   (when (and (amqp-method-synchronous-p method)
-             (not (= (amqp-method-class-id method) 90)) ;; tx method don't have nowait field
+             (not (= (amqp-method-class-id method) 90)) ;; tx methods don't have nowait field
+             (not (= (amqp-method-class-id method) 20)) ;; channel methods don't have nowait field
              (amqp-method-field-nowait method))
     (log:warn "Librabbitmq connection: nowait not supported")))
+
+(defmethod connection.send :around ((connection librabbitmq-connection) channel method)
+  ;; convert close replies for sync methods
+  (handler-case
+      (call-next-method)
+    (cl-rabbit:rabbitmq-server-error (e)
+      (error (amqp-error-type-from-reply-code (cl-rabbit:rabbitmq-server-error/reply-code e))
+             :reply-code (cl-rabbit:rabbitmq-server-error/reply-code e)
+             :reply-text (cl-rabbit:rabbitmq-server-error/reply-text e)
+             :connection connection
+             :channel channel
+             :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
+             :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-connection-close-ok))
+  (declare (ignore channel))
+  (cl-rabbit:connection-close-ok (connection-cl-rabbit-connection connection)
+                                 0))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-open))
+  (cl-rabbit:channel-open (connection-cl-rabbit-connection connection)
+                          (channel-id channel))
+  (make-instance 'amqp-method-channel-open-ok))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-flow))
+  (multiple-value-bind (active)
+      (cl-rabbit:channel-flow (connection-cl-rabbit-connection connection)
+                              (channel-id channel)
+                              (amqp-method-field-active method))
+    (make-instance 'amqp-method-channel-flow-ok
+                   :active active)))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-flow-ok))
+  (cl-rabbit:channel-flow-ok (connection-cl-rabbit-connection connection)
+                             (channel-id channel)
+                             (amqp-method-field-active method)))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-close))
+  (assert (equal (amqp-method-field-reply-text method) "") nil 'error "librabbitmq channel.close only supports reply-code") ;; TODO: specialize error
+  (assert (= (amqp-method-field-class-id method) 0) nil 'error "librabbitmq channel.close only supports reply-code") ;; TODO: specialize error
+  (assert (= (amqp-method-field-method-id method) 0) nil 'error "librabbitmq channel.close only supports reply-code") ;; TODO: specialize error
+  (cl-rabbit:channel-close (connection-cl-rabbit-connection connection)
+                            (channel-id channel)
+                            :reply-code (amqp-method-field-reply-code method))
+  (make-instance 'amqp-method-channel-close-ok))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-close-ok))
+  (cl-rabbit:channel-close-ok (connection-cl-rabbit-connection connection)
+                              (channel-id channel)))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-exchange-declare))
   (cl-rabbit:exchange-declare (connection-cl-rabbit-connection connection)

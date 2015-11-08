@@ -24,7 +24,7 @@
                                   :promise (unless nowait (lparallel:promise))))
 
 (defmethod channel.publish ((channel confirm-channel) content exchange &key (nowait) (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
-  (assert (channel-open-p channel) () 'channel-closed-error :channel channel)
+  (assert (channel-open-p% channel) () 'channel-closed-error :channel channel)
   (when (and (eq (bt:current-thread) (connection-thread (channel-connection channel)))
              (not nowait))
     (error "Waiting for confirms on connection thread not supported yet"))

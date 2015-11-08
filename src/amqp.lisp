@@ -6,29 +6,6 @@
 (defvar *channel* nil
   "Current AMQP channel")
 
-
-(defun amqp-channel-open (channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (with-slots (connection open-p channel-id) channel
-      (when open-p
-        (error 'channel-already-open :channel channel))
-      (cl-rabbit:channel-open (connection-cl-rabbit-connection connection)
-                              channel-id)
-      (setf open-p t)
-      (setf (gethash channel-id (connection-channels connection)) channel))))
-
-(defun amqp-channel-close (channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (with-slots (connection open-p channel-id) channel
-      (when open-p
-        (ignore-errors ;; TODO: Are you sure?
-         (cl-rabbit:channel-close (connection-cl-rabbit-connection connection)
-                                  channel-id)))
-      (setf open-p nil)
-      (if (eql channel  (gethash channel-id (connection-channels connection)))
-          (remhash channel-id (connection-channels connection)))
-      (release-channel-id (connection-channel-id-allocator connection) channel-id))))
-
 (defun amqp-queue-declare (name &rest args &key passive durable exclusive auto-delete arguments (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))

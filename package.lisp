@@ -51,10 +51,15 @@
            #:connection-spec-host
            #:connection-spec-port
            #:connection-spec-vhost
+           #:connection-open-p
 
            #:*channel*
+           #:channel-id
+           #:channel-connection
+           #:channel-open-p
            #:channel.new
            #:channel.open
+           #:channel.flow
            #:channel.new.open
            #:channel.prefetch
            #:channel.send
