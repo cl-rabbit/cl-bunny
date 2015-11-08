@@ -25,6 +25,7 @@
                   :serial t
                   :components
                   ((:test-file "basic")
+                   (:test-file "channel")
                    (:test-file "confirm")
                    (:test-file "tx")
                    (:module "exchanges"
