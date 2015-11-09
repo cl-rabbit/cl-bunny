@@ -217,7 +217,6 @@
                          do (wait-for-frame connection)
                          else
                          do (iolib:event-dispatch event-base :one-shot t)))))
-          (print ret)
           (setf (slot-value connection 'state) :closing)
           (eventfd.close control-fd)
           (log:debug "Stopping AMQP connection")
@@ -227,7 +226,7 @@
           (log:debug "closed-all-channels")
           ;; drain control mailbox
           (loop for lambda = (dequeue control-mailbox)
-                while (print lambda)
+                while lambda
                 do (funcall lambda))
           (log:error "queue drained")
           (setf (slot-value connection 'state) :closed)
