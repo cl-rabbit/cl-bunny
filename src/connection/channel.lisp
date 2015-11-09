@@ -54,34 +54,34 @@
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 
+(defparameter *force-timeout* nil)
+
 (defmethod channel.send :around (channel method)
-  (assert (or (typep method 'amqp-method-channel-open) (channel-open-p% channel)) () 'channel-closed-error :channel channel)
-  (assert (connection-open-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel))
   (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
       ;; we are inside of connection thread, just return promise
       (call-next-method)
       ;; we are calling from different thread,
       ;; for now we accept this as call from regular sync lisp code
       ;; use lparallel promise to lift errors
-      (let ((promise (lparallel:promise)))
+      (let ((promise (threaded-promise)))
         (execute-in-connection-thread ((channel-connection channel))
           (blackbird:catcher
            (blackbird:attach
             (channel.send channel method)
             (lambda (&rest vals)
-              (lparallel:fulfill promise (values-list vals))))
+              (promise.resolve promise (values-list vals))))
            (amqp-channel-error (e)
                                (log:error "~a" e)
                                (channel.close-ok% channel)
-                               (lparallel:fulfill promise (lparallel.promise::wrap-error e)))
+                               (promise.reject promise e))
            (amqp-connection-error (e)
-              (log:error "~a" e)
-              (connection.close-ok% (channel-connection channel)
-                                    (lambda ()
-                                      (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
+                                  (log:error "~a" e)
+                                  (connection.close-ok% (channel-connection channel)
+                                                        (lambda ()
+                                                          (promise.reject promise e))))
            (t (e)
-              (lparallel:fulfill promise (lparallel.promise::wrap-error e)))))
-        (lparallel:force promise))))
+              (promise.reject promise e))))
+        (promise.force promise :timeout *force-timeout*))))
 
 (defmethod channel.send (channel method)
   (connection.send (channel-connection channel) channel method))
@@ -118,15 +118,29 @@
                                 :active active)))
 
 (defun channel.close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
-  (when (channel-open-p% channel)
-    (channel.send% channel
-        (make-instance 'amqp-method-channel-close
-                       :reply-code reply-code
-                       :reply-text reply-text
-                       :class-id class-id
-                       :method-id method-id)
-      (setf (channel-open-p% channel) nil)
-      (connection.deregister-channel channel))))
+  (handler-case
+      (channel.send% channel
+          (make-instance 'amqp-method-channel-close
+                         :reply-code reply-code
+                         :reply-text reply-text
+                         :class-id class-id
+                         :method-id method-id)
+        (setf (channel-open-p% channel) nil)
+        (connection.deregister-channel channel))
+    (connection-closed-error () (log:debug "Closing channel on closed connection"))))
+
+(defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
+  (when (channel-open-p channel)
+    (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
+                                                      :reply-code reply-code
+                                                      :reply-text reply-text
+                                                      :class-id class-id
+                                                      :method-id method-id))))
+      (flet ((cb (reply)
+               (declare (ignorable reply))))
+        (if (blackbird:promisep reply)
+            (blackbird:attach reply (function cb))
+            (cb reply))))))
 
 (defun channel.close-ok% (channel)
   (channel.send% channel
@@ -168,10 +182,8 @@
            (unwind-protect
                 (progn
                   ,@body)
-             (when (and ,close-val ,allocated-p
-                        (channel-open-p% *channel*)
-                        (connection-open-p (channel-connection *channel*)))
-               (channel.close +amqp-reply-success+ 0 0 :channel *channel*))))))))
+             (when (and ,close-val ,allocated-p)
+               (channel.safe-close +amqp-reply-success+ 0 0 :channel *channel*))))))))
 
 
 (defun get-registered-exchange (channel name)
