@@ -6,6 +6,12 @@
 (define-condition error-base (error)
   ())
 
+(define-condition transport-error (amqp-protocol-error)
+  ((description :initform "" :initarg :description :reader transport-error-description)))
+
+(define-condition network-error (transport-error)
+  ())
+
 (define-condition unknown-consumer-error (error-base)
   ((message :initarg :message
             :reader error-message

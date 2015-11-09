@@ -5,7 +5,31 @@
                          :initarg :connection
                          :reader connection-cl-rabbit-connection)))
 
-
+(defun librabbitmq-error->transport-error (e)
+  (let ((code (cl-rabbit:rabbitmq-library-error/error-code e))
+        (description (cl-rabbit:rabbitmq-library-error/error-description e)))
+    (case code
+      (:amqp-status-unknown-class (error 'amqp-unknown-method-class-error))
+      (:amqp-status-unknown-method (error 'amqp-unknown-method-error))
+      (:amqp-status-hostname-resolution-failed (error 'transport-error))
+      (:amqp-status-incompatible-amqp-version (error 'transport-error))
+      (:amqp-status-connection-closed (error 'connection-closed-error))
+      (:amqp-status-bad-url (error 'transport-error))
+      (:amqp-status-socket-error (error 'network-error))
+      (:amqp-status-invalid-parameter (error 'transport-error))
+      (:amqp-status-table-too-big (error 'transport-error))
+      (:amqp-status-wrong-method (error 'transport-error))
+      (:amqp-status-timeout (error 'transport-error))
+      (:amqp-status-timer-failure (error 'transport-error))
+      (:amqp-status-heartbeat-timeout (error 'network-error))
+      (:amqp-status-unexpected-state (error 'transport-error))
+      (:amqp-status-tcp-error (error 'network-error))
+      (:amqp-status-tcp-socketlib-init-error (error 'network-error))
+      (:amqp-status-ssl-error (error 'network-error))
+      (:amqp-status-ssl-hostname-verify-failed (error 'network-error))
+      (:amqp-status-ssl-peer-verify-failed (error 'network-error))
+      (:amqp-status-ssl-connection-failed (error 'network-error)))
+    (error e)))
 
 (defun connection.new (&optional (spec "amqp://") &key shared)
   (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
@@ -42,17 +66,20 @@
   connection)
 
 (defun connection-init (connection)
-  (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
-    (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
-    (handler-bind ((cl-rabbit::rabbitmq-server-error
-                     (lambda (error)
-                       (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
-                         (error 'authentication-error :connection connection)))))
-      (cl-rabbit:login-sasl-plain cl-rabbit-connection
-                                  (connection-spec-vhost spec)
-                                  (connection-spec-login spec)
-                                  (connection-spec-password spec))
-      (setf (slot-value connection 'state) :open))))
+  (handler-case
+      (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
+        (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
+        (handler-bind ((cl-rabbit::rabbitmq-server-error
+                         (lambda (error)
+                           (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
+                             (error 'authentication-error :connection connection)))))
+          (cl-rabbit:login-sasl-plain cl-rabbit-connection
+                                      (connection-spec-vhost spec)
+                                      (connection-spec-login spec)
+                                      (connection-spec-password spec))
+          (setf (slot-value connection 'state) :open)))
+    (cl-rabbit:rabbitmq-library-error ()
+      (error 'transport-error))))
 
 (defun process-return-method (state method channel)
   (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
@@ -174,13 +201,23 @@
       (let ((ret))
         (unwind-protect
              (setf ret
-                  (catch 'stop-connection
-                    (loop
-                      if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
-                             (cl-rabbit::frames-enqueued cl-rabbit-connection))
-                      do (wait-for-frame connection)
-                      else
-                      do (iolib:event-dispatch event-base :one-shot t))))
+                   (catch 'stop-connection
+                     (handler-bind ((cl-rabbit:rabbitmq-library-error
+                                      (lambda (e)
+                                        (let ((actual-error (librabbitmq-error->transport-error e)))
+                                          (log:error "Unhandled transport error: ~a" actual-error)
+                                          (throw 'stop-connection actual-error))))
+                                    (error
+                                      (lambda (e)
+                                        (log:error "Unhandled unknown error: ~a" e)
+                                        (throw 'stop-connection e))))
+                       (loop
+                         if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
+                                (cl-rabbit::frames-enqueued cl-rabbit-connection))
+                         do (wait-for-frame connection)
+                         else
+                         do (iolib:event-dispatch event-base :one-shot t)))))
+          (print ret)
           (setf (slot-value connection 'state) :closing)
           (eventfd.close control-fd)
           (log:debug "Stopping AMQP connection")
@@ -190,8 +227,9 @@
           (log:debug "closed-all-channels")
           ;; drain control mailbox
           (loop for lambda = (dequeue control-mailbox)
-                while lambda
-                do (ignore-errors (funcall lambda)))
+                while (print lambda)
+                do (funcall lambda))
+          (log:error "queue drained")
           (setf (slot-value connection 'state) :closed)
           (cl-rabbit:destroy-connection cl-rabbit-connection)
           (if (functionp ret)
@@ -256,7 +294,9 @@
              :connection connection
              :channel channel
              :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
-             :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))))
+             :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))
+    (cl-rabbit:rabbitmq-library-error (e)
+      (librabbitmq-error->transport-error e))))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-connection-close-ok))
   (declare (ignore channel))
@@ -286,8 +326,8 @@
   (assert (= (amqp-method-field-class-id method) 0) nil 'error "librabbitmq channel.close only supports reply-code") ;; TODO: specialize error
   (assert (= (amqp-method-field-method-id method) 0) nil 'error "librabbitmq channel.close only supports reply-code") ;; TODO: specialize error
   (cl-rabbit:channel-close (connection-cl-rabbit-connection connection)
-                            (channel-id channel)
-                            :reply-code (amqp-method-field-reply-code method))
+                           (channel-id channel)
+                           :reply-code (amqp-method-field-reply-code method))
   (make-instance 'amqp-method-channel-close-ok))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-channel-close-ok))

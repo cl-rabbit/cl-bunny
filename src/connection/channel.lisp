@@ -79,8 +79,14 @@
                                   (throw 'stop-connection
                                     (lambda ()
                                       (promise.reject promise e))))
-           (t (e)
-              (promise.reject promise e))))
+           (transport-error (e)
+                            (log:error "~a" e)
+                            (throw 'stop-connection
+                              (lambda ()
+                                (promise.reject promise e))))
+           (error (e)
+                  (log:error "~a" e)
+                  (promise.reject promise e))))
         (promise.force promise :timeout *force-timeout*))))
 
 (defmethod channel.send (channel method)
