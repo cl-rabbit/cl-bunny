@@ -1,6 +1,6 @@
 # CL-BUNNY [![Build Status](https://travis-ci.org/cl-rabbit/cl-bunny.svg)](https://travis-ci.org/cl-rabbit/cl-bunny) [![Coverage Status](https://coveralls.io/repos/cl-rabbit/cl-bunny/badge.svg?branch=master&service=github)](https://coveralls.io/github/cl-rabbit/cl-bunny?branch=master)
 CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.com/lokedhs/cl-rabbit) and inspired by [bunny](https://github.com/ruby-amqp/bunny).
-**Please use with caution - work in progress, API is not stable, error-handling almost non-existent**. **Contributions are greatly appreciated!**
+**Please use with caution - work in progress, error-handling not so descriptive, API is not always stable**. **Contributions are greatly appreciated!**
 
 ## Installation Notes
 CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
@@ -57,6 +57,15 @@ If you are new to RabbitMQ you may find the following links useful:
                                  (message-body-string message)))))
         (publish x "Hello world!" :routing-key "cl-bunny.examples.hello-world"))
       (sleep 1))))
+```
+
+####  Error handling
+```lisp
+(with-connection ()
+    (with-channel ()
+      (handler-case
+          (channel.open)
+        (amqp:amqp-error-command-invalid () (print "Can't open already opened channel")))))
 ```
 
 #### Headers Exchange
