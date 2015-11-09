@@ -5,6 +5,8 @@
            #:with-channel
            #:with-consumers
 
+           #:*force-timeout*
+
            #:message-channel
            #:message-consumer-tag
            #:message-delivery-tag
@@ -35,6 +37,7 @@
            #:error-connection
            #:connection-closed-error
            #:channel-closed-error
+           #:threaded-promise-timeout
 
            ;; high-level interfaces
            #:properties-headers
