@@ -76,9 +76,9 @@
                                (promise.reject promise e))
            (amqp-connection-error (e)
                                   (log:error "~a" e)
-                                  (connection.close-ok% (channel-connection channel)
-                                                        (lambda ()
-                                                          (promise.reject promise e))))
+                                  (throw 'stop-connection
+                                    (lambda ()
+                                      (promise.reject promise e))))
            (t (e)
               (promise.reject promise e))))
         (promise.force promise :timeout *force-timeout*))))
