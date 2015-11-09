@@ -97,7 +97,6 @@
              (,cb reply))))))
 
 (defun channel.open (&optional (channel *channel*))
-  (assert (not (channel-open-p% channel)) nil 'error "Channel already open") ;; TODO: specialize error
   (channel.send% channel
                  (make-instance 'amqp-method-channel-open)
     (setf (channel-open-p% channel) t)
