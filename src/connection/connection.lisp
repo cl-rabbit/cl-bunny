@@ -20,12 +20,14 @@
    (control-fd :initform (eventfd:eventfd.new 0))
    (control-mailbox :initform (make-queue) :reader connection-control-mailbox)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
-   (connection-thread :reader connection-thread)))
+   (connection-thread :reader connection-thread)
+   (state :initform :closed :reader connection-state)))
 
 (defun connection-open-p (connection)
   (and connection
        (slot-boundp connection 'connection-thread)
-       (bt:thread-alive-p (connection-thread connection))))
+       (bt:thread-alive-p (connection-thread connection))
+       (eq (connection-state connection) :open)))
 
 (defun check-connection-alive (connection)
   (when (connection-open-p connection)
@@ -38,9 +40,11 @@
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
     (setf execute-in-connection-lambda
           (lambda (thunk)
-            (enqueue thunk control-mailbox)
-            (log:debug "Notifying connection thread")
-            (eventfd.notify-1 control-fd)))))
+            (if (connection-open-p connection)
+                (progn (enqueue thunk control-mailbox)
+                       (log:debug "Notifying connection thread")
+                       (eventfd.notify-1 control-fd))
+                (error 'connection-closed-error :connection connection))))))
 
 (defgeneric register-channel (connection channel))
 
@@ -92,11 +96,14 @@
            (error 'connection-closed-error :connection ,connection%)))))
 
 (defun connection.close (&optional (connection *connection*))
-  (when (connection-open-p connection)
-    (progn
-      (execute-in-connection-thread (connection)
-        (throw 'stop-connection (values)))
-      (bt:join-thread (connection-thread connection)))))
+  (if (eq (bt:current-thread) (connection-thread connection))
+      (throw 'stop-connection (values))
+      (progn
+        (handler-case
+         (progn (execute-in-connection-thread (connection)
+                  (connection.close connection))
+                (bt:join-thread (connection-thread connection)))
+         (connection-closed-error () (log:debug "Closing already closed connection"))))))
 
 (defun connection.close-ok% (connection callback)
   (connection.send connection connection (make-instance 'amqp-method-connection-close-ok))
