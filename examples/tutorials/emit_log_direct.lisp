@@ -2,12 +2,12 @@
 
 (in-package :cl-bunny.examples)
 
-(with-connection ("amqp://")
+(with-connection ()
   (with-channel ()
-    (let* ((args (cdr sb-ext:*posix-argv*))
-           (severity (if (car args) (car args) "info"))
-           (msg (format nil "~{~a ~}" (cdr args)))
-           (x (amqp-exchange-declare "direct_logs" :type "direct")))
+    (let* ((args (rest sb-ext:*posix-argv*))
+           (severity (or (first args) "info"))
+           (msg (format nil "~{~a ~}" (rest args)))
+           (x (exchange.direct "direct_logs")))
       (publish x msg :routing-key severity)
       (format t " [x] Sent '~a'" msg)
       (sleep 1))))
