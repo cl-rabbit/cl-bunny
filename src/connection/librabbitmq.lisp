@@ -30,7 +30,7 @@
          (unwind-protect
               (progn
                 ,@body)
-           (when (and (not ,shared-val) (connection-open-p *connection*))
+           (when (and (not ,shared-val))
              (connection.close)))))))
 
 (defun connection.open (&optional (connection *connection*))
@@ -51,7 +51,8 @@
       (cl-rabbit:login-sasl-plain cl-rabbit-connection
                                   (connection-spec-vhost spec)
                                   (connection-spec-login spec)
-                                  (connection-spec-password spec)))))
+                                  (connection-spec-password spec))
+      (setf (slot-value connection 'state) :open))))
 
 (defun process-return-method (state method channel)
   (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
@@ -170,24 +171,31 @@
                             :read (lambda (fd e ex)
                                     (declare (ignorable fd e ex))
                                     (wait-for-frame connection)))
-
-      (let ((ret
-              (catch 'stop-connection
-                   (loop
-                     if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
-                            (cl-rabbit::frames-enqueued cl-rabbit-connection))
-                     do (wait-for-frame connection)
-                     else
-                     do (iolib:event-dispatch event-base :one-shot t)))))
-        (log:debug "Stopping AMQP connection")
-        (when (connection-pool connection)
-          (remove-connection-from-pool connection))
-        (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
-        (log:debug "closed-all-channels")
-        (eventfd.close control-fd)
-        (cl-rabbit:destroy-connection cl-rabbit-connection)
-        (if (functionp ret)
-            (funcall ret))))))
+      (let ((ret))
+        (unwind-protect
+             (setf ret
+                  (catch 'stop-connection
+                    (loop
+                      if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
+                             (cl-rabbit::frames-enqueued cl-rabbit-connection))
+                      do (wait-for-frame connection)
+                      else
+                      do (iolib:event-dispatch event-base :one-shot t))))
+          (setf (slot-value connection 'state) :closing)
+          (eventfd.close control-fd)
+          (log:debug "Stopping AMQP connection")
+          (when (connection-pool connection)
+            (remove-connection-from-pool connection))
+          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
+          (log:debug "closed-all-channels")
+          ;; drain control mailbox
+          (loop for lambda = (dequeue control-mailbox)
+                while lambda
+                do (ignore-errors (funcall lambda)))
+          (setf (slot-value connection 'state) :closed)
+          (cl-rabbit:destroy-connection cl-rabbit-connection)
+          (if (functionp ret)
+              (funcall ret)))))))
 
 (defmethod properties->alist ((properties list))
   (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties)))
@@ -231,6 +239,13 @@
     (log:warn "Librabbitmq connection: nowait not supported")))
 
 (defmethod connection.send :around ((connection librabbitmq-connection) channel method)
+  (log:trace "connection: ~a, channel: ~a, method: ~a" connection channel method)
+  (unless (or (typep method 'amqp-method-connection-close)
+              (typep method 'amqp-method-channel-close))
+    (assert (connection-open-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel)))
+  (unless (or (typep method 'amqp-method-channel-open)
+              (typep method 'amqp-method-channel-close))
+    (assert (channel-open-p% channel) () 'channel-closed-error :channel channel))
   ;; convert close replies for sync methods
   (handler-case
       (call-next-method)
