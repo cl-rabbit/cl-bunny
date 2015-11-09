@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan nil)
+(plan 5)
 
 (subtest "Channel tests"
   (subtest "New channel should be closed and registered"
@@ -11,7 +11,7 @@
 
   (with-connection ()
     (with-channel ()
-      (is-error (channel.open) 'error "Can't open already opened channel"))) ;; TODO: specialize error
+      (is-error (channel.open) 'amqp:amqp-error-command-invalid "Can't open already opened channel")))
 
   (with-connection ()
     (with-channel ()
