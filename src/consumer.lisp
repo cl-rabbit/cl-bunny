@@ -25,8 +25,11 @@
   (assert consumers)
   (with-gensyms (new-consumers)
     (let ((consumers (loop for consumer in consumers
+                           if (listp consumer)
                            collect
-                              `(apply #'subscribe (list ,@consumer)))))
+                              `(subscribe ,@consumer)
+                           else
+                           collect `(subscribe-sync ,consumer))))
       `(let ((,new-consumers (list
                               ,@consumers)))
          (unwind-protect
@@ -51,8 +54,10 @@
 
 (defun execute-consumer (consumer message)
   (setf (slot-value message 'consumer) consumer)
-  (when (eq :cancel (funcall (consumer-lambda consumer) message))
-    (unsubscribe consumer)))
+  (let ((result (funcall (consumer-lambda consumer) message)))
+    (when (eq :cancel result)
+      (unsubscribe consumer))
+    result))
 
 (defun dispatch-consumed-message (channel message)
   (if-let ((consumer (find-message-consumer channel message)))
@@ -66,12 +71,13 @@
   ;; what if with-consumers used many channels?
   ;; maybe replace it with flet?
   (let ((mailbox (channel-mailbox channel)))
-    (loop for message = (mailbox-receive-message mailbox :timeout timeout)
-          do
-             (when message
-               (dispatch-consumed-message channel message))
-             (when one-shot
-               (return)))))
+    (loop
+      (multiple-value-bind (message ok)
+          (mailbox-receive-message mailbox :timeout timeout)
+        (when message
+          (setf message (dispatch-consumed-message channel message)))
+        (when one-shot
+          (return (values message ok)))))))
 
 ;; maybe just (let ((*channel* (consumer-channel consumer))) ... ) in execute-consumer?
 (defun wrap-async-subscribe-with-channel (fn channel)
@@ -87,6 +93,15 @@
         (add-consumer channel queue consumer-tag type (if (eq type :async)
                                                           (wrap-async-subscribe-with-channel fn channel)
                                                           fn))))))
+
+(defun subscribe-sync (queue &key consumer-tag no-local no-ack exclusive arguments (channel *channel*))
+  (subscribe queue #'identity :type :sync
+                              :consumer-tag consumer-tag
+                              :no-local no-local
+                              :no-ack no-ack
+                              :exclusive exclusive
+                              :arguments arguments
+                              :channel channel))
 
 (defun unsubscribe (consumer)
   (if (eq (consumer-type consumer) :async)
