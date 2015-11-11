@@ -9,6 +9,7 @@
 
            #:message-channel
            #:message-consumer-tag
+           #:message-consumer
            #:message-delivery-tag
            #:message-redelivered-p
            #:message-exchange
@@ -94,4 +95,5 @@
 
            #:publish
            #:consume
-           #:subscribe))
+           #:subscribe
+           #:subscribe-sync))
