@@ -228,7 +228,7 @@
           (loop for lambda = (dequeue control-mailbox)
                 while lambda
                 do (funcall lambda))
-          (log:error "queue drained")
+          (log:debug "queue drained")
           (setf (slot-value connection 'state) :closed)
           (cl-rabbit:destroy-connection cl-rabbit-connection)
           (if (functionp ret)
