@@ -23,9 +23,9 @@
       (channel.open ch3)
 
       (log:info "Setting prefetch size")
-      (setf (channel-prefetch ch1) 4
-            (channel-prefetch ch2) 1
-            (channel-prefetch ch3) 1)
+      (qos :prefetch-count 4 :channel ch1)
+      (qos :prefetch-count 1 :channel ch2)
+      (qos :prefetch-count 1 :channel ch3)
 
       (log:info "Declaring direct exchange")
       (let ((x (exchange.direct "amq.direct" :channel ch3 :durable t)))
@@ -74,7 +74,7 @@
                                    (sleep 0.5)
                                    (publish x (format nil "Message #~a" i) :properties `(:headers (("i" . ,i)
                                                                                                    ("x" . "y")))))
-                            (channel-closed-error () (log:info "Connection closed as expected")))))
+                            (connection-closed-error () (log:info "Connection closed as expected")))))
 
         (bt:make-thread (lambda ()
                           (sleep 4)

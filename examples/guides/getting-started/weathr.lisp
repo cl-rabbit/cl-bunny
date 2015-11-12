@@ -50,18 +50,16 @@
                                  (message-routing-key message)))))
 
         (log:info "Publishing")        
-        (->
-          x
-          (publish "San Diego update"      :routing-key "americas.north.us.ca.sandiego")
-          (publish "Berkeley update"       :routing-key "americas.north.us.ca.berkeley")
-          (publish "San Francisco update"  :routing-key "americas.north.us.ca.sanfrancisco")
-          (publish "New York update"       :routing-key "americas.north.us.ny.newyork")
-          (publish "São Paolo update"      :routing-key "americas.south.brazil.saopaolo")
-          (publish "Hong Kong update"      :routing-key "asia.southeast.hk.hongkong")
-          (publish "Kyoto update"          :routing-key "asia.southeast.japan.kyoto")
-          (publish "Shanghai update"       :routing-key "asia.southeast.prc.shanghai")
-          (publish "Rome update"           :routing-key "europe.italy.roma")
-          (publish "Paris update"          :routing-key "europe.france.paris"))
+        (publish x "San Diego update"      :routing-key "americas.north.us.ca.sandiego")
+        (publish x "Berkeley update"       :routing-key "americas.north.us.ca.berkeley")
+        (publish x "San Francisco update"  :routing-key "americas.north.us.ca.sanfrancisco")
+        (publish x "New York update"       :routing-key "americas.north.us.ny.newyork")
+        (publish x "São Paolo update"      :routing-key "americas.south.brazil.saopaolo")
+        (publish x "Hong Kong update"      :routing-key "asia.southeast.hk.hongkong")
+        (publish x "Kyoto update"          :routing-key "asia.southeast.japan.kyoto")
+        (publish x "Shanghai update"       :routing-key "asia.southeast.prc.shanghai")
+        (publish x "Rome update"           :routing-key "europe.italy.roma")
+        (publish x "Paris update"          :routing-key "europe.france.paris")
 
         (log:info "Waiting...")
         (sleep 3)

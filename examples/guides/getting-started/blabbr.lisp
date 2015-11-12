@@ -26,10 +26,8 @@
                                  (babel:octets-to-string (message-body message))))))
 
         (log:info "Publishing")        
-        (->
-          x
-          (publish "BOS 101, NYK 89")
-          (publish "ORL 85, ALT 88"))
+        (publish x "BOS 101, NYK 89")
+        (publish x "ORL 85, ALT 88")
         
         (log:info "Waiting...")
         (sleep 3)

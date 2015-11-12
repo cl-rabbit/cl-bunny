@@ -64,7 +64,7 @@
                     (publish x "Hello world!" :routing-key queue-name)
                     (consume :one-shot t))
                (when *channel* ;; btw, channel will be closed with connection anyway
-                 (channel.close)))))
+                 (channel.close amqp:+amqp-reply-success+ 0 0)))))
       (when *connection*
         (connection.close)))))
 
