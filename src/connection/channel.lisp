@@ -47,7 +47,7 @@
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))
     (if (eq :sync (consumer-type consumer))
-        (mailbox-send-message (channel-mailbox channel) message)
+        (safe-queue:mailbox-send-message (channel-mailbox channel) message)
         (execute-consumer consumer message))
     (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
 

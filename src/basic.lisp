@@ -15,3 +15,11 @@
                    :immediate immediate
                    :properties properties
                    :nowait nowait))
+
+(defun qos (&key (prefetch-size 0) (prefetch-count 0) (global nil) (channel *channel*))
+  (channel.send% channel
+      (make-instance 'amqp-method-basic-qos
+                     :prefetch-size prefetch-size
+                     :prefetch-count prefetch-count
+                     :global global)
+    t))

@@ -1,0 +1,15 @@
+(ql:quickload :cl-bunny.examples)
+
+(in-package :cl-bunny.examples)
+
+(with-connection ("amqp://")
+  (with-channel ()
+    (let ((x (exchange.fanout "logs"))
+          (q (queue.declare :auto-delete t)))
+      (queue.bind q x)
+      (format t " [*] Waiting for logs~%")
+      (subscribe q (lambda (message)
+                     (let ((body (message-body-string message)))
+                       (format t " [x] #~a~%" body)))
+                 :type :sync)
+      (consume))))

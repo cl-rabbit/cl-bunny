@@ -25,6 +25,12 @@
 (defmethod queue-name ((queue string))
   queue)
 
+(defmethod reply-to ((queue string))
+  queue)
+
+(defmethod reply-to ((queue queue))
+  (queue-name queue))
+
 (defun queue.declare (&key (name "") (passive) (durable) (exclusive nil exclusive-supplied-p) (auto-delete nil auto-delete-supplied-p) (nowait) (arguments nil) (channel *channel*))
   ;; (when (and (equal name "")
   ;;            (or exclusive (not exclusive-supplied-p))

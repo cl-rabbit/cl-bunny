@@ -1,5 +1,5 @@
 (defpackage :cl-bunny
-  (:use :cl :alexandria :safe-queue :eventfd :amqp)
+  (:use :cl :alexandria :eventfd :amqp)
   (:nicknames :bunny)
   (:export #:with-connection
            #:with-channel
@@ -65,7 +65,6 @@
            #:channel.open
            #:channel.flow
            #:channel.new.open
-           #:channel.prefetch
            #:channel.send
            #:channel.confirm
            #:channel.tx
@@ -96,4 +95,5 @@
            #:publish
            #:consume
            #:subscribe
-           #:subscribe-sync))
+           #:subscribe-sync
+           #:qos))

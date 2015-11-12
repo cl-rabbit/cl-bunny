@@ -16,6 +16,7 @@
                                   q1 (message-body-string message))
                         (attach (queue.bind q2 x :routing-key "watermark")
                                 (lambda (queue)
+                                  (declare (ignore queue))
                                   (publish x (format nil "~a" (random 15)) :routing-key "watermark")))))
         (subscribe q2 (lambda (message)
                         (log:info "[consumer] ~a received a 'watermark' message: ~a"

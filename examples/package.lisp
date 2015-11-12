@@ -1,14 +1,20 @@
 (in-package :cl-user)
 
 (defpackage :cl-bunny.examples
-  (:use :cl :cl-bunny :amqp :blackbird)
+  (:use :cl :cl-bunny :amqp :alexandria :blackbird)
   (:nicknames :bunny.examples)
-  (:export #:fanout-exchange-routing
-           #:headers-exchange-routing
-           #:direct-exchange-routing
+  (:export #:direct-exchange-routing
            #:direct-exchange-routing-sync
+           #:fanout-exchange-routing
+           #:headers-exchange-routing
+           #:mandatory-messages
 
            #:blabbr
            #:weathr
            #:hello-world
-           #:hello-world-sync))
+           #:hello-world-sync
+           #:hello-world-raw
+
+           #:redeliveries
+
+           #:authentication-error))

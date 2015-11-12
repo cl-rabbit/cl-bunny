@@ -73,7 +73,7 @@
   (let ((mailbox (channel-mailbox channel)))
     (loop
       (multiple-value-bind (message ok)
-          (mailbox-receive-message mailbox :timeout timeout)
+          (safe-queue:mailbox-receive-message mailbox :timeout timeout)
         (when message
           (setf message (dispatch-consumed-message channel message)))
         (when one-shot

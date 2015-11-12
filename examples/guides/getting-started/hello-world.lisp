@@ -64,6 +64,46 @@
                     (publish x "Hello world!" :routing-key queue-name)
                     (consume :one-shot t))
                (when *channel* ;; btw, channel will be closed with connection anyway
-                 (channel.close)))))
+                 (channel.close amqp:+amqp-reply-success+ 0 0)))))
       (when *connection*
         (connection.close)))))
+
+
+
+
+;; (defun hello-world-async ()
+;;   (with-conneciton ("amqp://" :async t)
+;;     (with-channel ()
+;;       (alet ((x (exchange.default)))
+;;         (chain (queue.declare :name "cl-bunny.examples.hello-world" :auto-delete t)
+;;           (:attach (q)
+;;                    (subscribe q (lambda (message)
+;;                                   (log:info "Received ~a"
+;;                                             (message-body-string message)))))
+;;           (:attach ()
+;;                    (publish x "Hello world!" :routing-key "cl-bunny.examples.hello-world")))))))
+
+;; (defun hello-world-async-raw ()
+;;   (let ((bunny::*connection* (connection.new "amqp://"))
+;;         (channel))
+;;     (finally
+;;         (catcher
+;;          (chain (connection.start)
+;;            (:attach (_)
+;;              (channel.open))
+;;            (:attach (c &out (x (exchange.default c)))
+;;              (setf channel c))
+;;            (:attach (_)
+;;              (queue.declare :name "cl-bunny.examples.hello-world" :auto-delete t :channel channel))
+;;            (:attach (q)
+;;              (subscribe q (lambda (message)
+;;                             (log:info "Received ~a"
+;;                                       (message-body-string message))
+;;                             (connection.close))))
+;;            (:attach (_)
+;;               (publish "" "Hello world!" :routing-key "cl-bunny.examples.hello-world" :channel channel)))
+;;          (t (e)
+;;             (log:error "~A" e)))
+;;       (when bunny::*connection*
+;;         (connection.close)))))
+
