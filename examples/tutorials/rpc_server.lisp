@@ -3,36 +3,40 @@
 
 (in-package :cl-bunny.examples)
 
-(defun int32-to-octet(val)
-  (declare (type (signed-byte 32) val)
-           (optimize (sb-c::insert-debug-catch 0)  
-                     (speed 3) 
-                     (compilation-speed 0)
-                     (safety 0)))
-  (let ((array (make-array 4 :element-type '(unsigned-byte 8))))
-    (setf (aref array 0) (ldb (byte 8 0) val))
-    (setf (aref array 1) (ldb (byte 8 8) val))
-    (setf (aref array 2) (ldb (byte 8 16) val))
-    (setf (aref array 3) (ldb (byte 8 24) val))
-    array))
+(defun int64-to-octets(val)
+  (let ((obuffer (fast-io:make-output-buffer)))
+    (fast-io:write64-be val obuffer)
+    (fast-io:finish-output-buffer obuffer)))
 
+;; http://www.cliki.net/fibonacci
 (defun fibonacci (n)
-  (if (< n 3)
-      1
-      (+ (fibonacci (- n 1)) (fibonacci (- n 2)))))
+  "Successive squaring method from SICP"
+  (check-type n (integer 0 *))
+  (labels ((fib-aux (a b p q count)
+             (cond ((= count 0) b)
+                   ((evenp count)
+                    (fib-aux a
+                             b
+                             (+ (* p p) (* q q))
+                             (+ (* q q) (* 2 p q))
+                             (/ count 2)))
+                   (t (fib-aux (+ (* b q) (* a q) (* a p))
+                               (+ (* b p) (* a q))
+                               p
+                               q
+                               (- count 1))))))
+    (fib-aux 1 0 0 1 n)))
 
-(with-connection ("amqp://")
+(with-connection ()
   (with-channel ()
-    (let ((x (default-exchange))
-          (q (queue.declare "rpc_queue" :auto-delete t)))
+    (let ((x (exchange.default))
+          (q (queue.declare :name "rpc_queue" :auto-delete t)))
       (format t " [x] Awaiting RPC requests~%")
-      (subscribe q (lambda (message)                     
-                     (let ((n (nibbles:sb32ref/le (coerce (message-body message) '(vector (unsigned-byte 8))) 0)))
+      (subscribe q (lambda (message)
+                     (let ((n (nibbles:sb64ref/be (message-body message) 0)))
                        (publish x
-                                (int32-to-octet (fibonacci n ))
+                                (int64-to-octets (fibonacci n))
                                 :routing-key (alexandria::assoc-value (message-properties message) :reply-to)
-                                :properties `((:correlation-id . ,(alexandria::assoc-value (message-properties message) :correlation-id))))))
+                                :properties `(:correlation-id ,(message-property-value message :correlation-id)))))
                  :type :sync)
       (consume))))
-                                
-
