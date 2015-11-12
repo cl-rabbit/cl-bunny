@@ -235,7 +235,13 @@
               (funcall ret)))))))
 
 (defmethod properties->alist ((properties list))
-  (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties)))
+  (let ((properties (copy-list properties)))
+    (when (find :persistent properties)
+      (setf (getf properties :delivery-mode) (if (getf properties :persistent)
+                                                 2
+                                                 1))
+      (remf properties :persistent))
+    (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties))))
 
 (defmethod properties->alist ((properties amqp-basic-class-properties))
   (collectors:with-alist-output (add-prop)
@@ -246,7 +252,9 @@
     (when (slot-boundp properties 'amqp::headers)
       (add-prop :headers (amqp-property-headers properties)))
     (when (slot-boundp properties 'amqp::delivery-mode)
-      (add-prop :delivery-mode (amqp-property-delivery-mode properties)))
+      (add-prop :persistent (ecase (amqp-property-delivery-mode properties)
+                              (2 t)
+                              (1 nil))))
     (when (slot-boundp properties 'amqp::priority)
       (add-prop :priority (amqp-property-priority properties)))
     (when (slot-boundp properties 'amqp::correlation-id)
@@ -269,10 +277,8 @@
       (add-prop :cluster-id (amqp-property-cluster-id properties)))))
 
 (defmethod connection.send :before ((connection librabbitmq-connection) channel method)
-  (when (and (amqp-method-synchronous-p method)
-             (not (= (amqp-method-class-id method) 90)) ;; tx methods don't have nowait field
-             (not (= (amqp-method-class-id method) 20)) ;; channel methods don't have nowait field
-             (amqp-method-field-nowait method))
+  (when (and (amqp-method-synchronous-p method)             
+             (ignore-errors (amqp-method-field-nowait method)))
     (log:warn "Librabbitmq connection: nowait not supported")))
 
 (defmethod connection.send :around ((connection librabbitmq-connection) channel method)
@@ -422,6 +428,14 @@
                            :immediate (amqp-method-field-immediate method)
                            :content (amqp-method-content method)
                            :content-properties (properties->alist (amqp-method-content-properties method))))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-qos))
+  (cl-rabbit:basic-qos (connection-cl-rabbit-connection connection)
+                       (channel-id channel)
+                       (amqp-method-field-prefetch-size method)
+                       (amqp-method-field-prefetch-count method)
+                       :global (amqp-method-field-global method))
+  (make-instance 'amqp-method-basic-qos-ok))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
