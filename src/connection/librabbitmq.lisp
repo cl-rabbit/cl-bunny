@@ -190,7 +190,7 @@
                                     (declare (ignorable fd e ex))
                                     (eventfd.read control-fd)
                                     (log:debug "Got lambda to execute on connection thread")
-                                    (loop for lambda = (dequeue control-mailbox)
+                                    (loop for lambda = (safe-queue:dequeue control-mailbox)
                                           while lambda
                                           do (funcall lambda))))
       (iolib:set-io-handler event-base
@@ -225,7 +225,7 @@
           (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
           (log:debug "closed-all-channels")
           ;; drain control mailbox
-          (loop for lambda = (dequeue control-mailbox)
+          (loop for lambda = (safe-queue:dequeue control-mailbox)
                 while lambda
                 do (funcall lambda))
           (log:debug "queue drained")
@@ -242,6 +242,8 @@
                                                  1))
       (remf properties :persistent))
     (properties->alist (apply #'make-instance 'amqp-basic-class-properties properties))))
+
+(defgeneric reply-to (queue))
 
 (defmethod properties->alist ((properties amqp-basic-class-properties))
   (collectors:with-alist-output (add-prop)
@@ -260,7 +262,7 @@
     (when (slot-boundp properties 'amqp::correlation-id)
       (add-prop :correlation-id (amqp-property-correlation-id properties)))
     (when (slot-boundp properties 'amqp::reply-to)
-      (add-prop :reply-to (amqp-property-reply-to properties)))
+      (add-prop :reply-to (reply-to (amqp-property-reply-to properties))))
     (when (slot-boundp properties 'amqp::expiration)
       (add-prop :expiration (amqp-property-expiration properties)))
     (when (slot-boundp properties 'amqp::message-id)

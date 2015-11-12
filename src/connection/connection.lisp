@@ -18,7 +18,7 @@
 
    (event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
-   (control-mailbox :initform (make-queue) :reader connection-control-mailbox)
+   (control-mailbox :initform (safe-queue:make-queue) :reader connection-control-mailbox)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
    (connection-thread :reader connection-thread)
    (state :initform :closed :reader connection-state)))
@@ -41,7 +41,7 @@
     (setf execute-in-connection-lambda
           (lambda (thunk)
             (if (connection-open-p connection)
-                (progn (enqueue thunk control-mailbox)
+                (progn (safe-queue:enqueue thunk control-mailbox)
                        (log:debug "Notifying connection thread")
                        (eventfd.notify-1 control-fd))
                 (error 'connection-closed-error :connection connection))))))

@@ -1,5 +1,5 @@
 (defpackage :cl-bunny
-  (:use :cl :alexandria :safe-queue :eventfd :amqp)
+  (:use :cl :alexandria :eventfd :amqp)
   (:nicknames :bunny)
   (:export #:with-connection
            #:with-channel
