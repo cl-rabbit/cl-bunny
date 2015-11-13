@@ -1,5 +1,5 @@
-- [ ] Peplace old src/amqp.lisp functions with channel.send
-  - [ ] amqp-basic-consume%
+- [-] Peplace old src/amqp.lisp functions with channel.send
+  - [X] amqp-basic-consume%
   - [ ] amqp-basic-cancel
   - [ ] amqp-basic-cancel-async
   - [ ] amqp-basic-ack

@@ -491,6 +491,19 @@
                        :global (amqp-method-field-global method))
   (make-instance 'amqp-method-basic-qos-ok))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-consume))
+  (multiple-value-bind (consumer-tag)
+      (cl-rabbit:basic-consume (connection-cl-rabbit-connection connection)
+                               (channel-id channel)
+                               (amqp-method-field-queue method)
+                               :consumer-tag (amqp-method-field-consumer-tag method)
+                               :no-local (amqp-method-field-no-local method)
+                               :no-ack (amqp-method-field-no-ack method)
+                               :exclusive (amqp-method-field-exclusive method)
+                               :arguments (amqp-method-field-arguments method))
+    (make-instance 'amqp-method-basic-consume-ok
+                    :consumer-tag consumer-tag)))
+
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
                             (channel-id channel))

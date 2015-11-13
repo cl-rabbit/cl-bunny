@@ -1,10 +1,5 @@
 (in-package :cl-bunny)
 
-(defun amqp-basic-consume% (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
-                                             (channel *channel*))
-  (remf args :channel)
-  (apply #'cl-rabbit:basic-consume (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) queue) args)))
-
 (defun amqp-basic-cancel (consumer-tag &rest args &key no-wait (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))
