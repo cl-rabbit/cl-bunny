@@ -1,1 +1,19 @@
-# Connection string support
+- [ ] Connection string
+  - [ ] Parser tests
+  - [ ] Printer
+  - [ ] Connection parameters supprot via url query
+- [ ] Peplace old src/amqp.lisp functions with channel.send
+  - [ ] amqp-basic-consume%
+  - [ ] amqp-basic-cancel
+  - [ ] amqp-basic-cancel-async
+  - [ ] amqp-basic-ack
+  - [ ] amqp-basic-ack-async
+  - [ ] amqp-basic-nack
+  - [ ] amqp-basic-nack-async
+- [ ] Print-objects for
+  - [ ] connection spec
+  - [ ] connection
+  - [ ] message
+  - [ ] queue
+  - [ ] channel
+  - [ ] consumer
