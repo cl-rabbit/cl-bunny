@@ -37,17 +37,6 @@
                :initarg :reply-text
                :reader returned-message-reply-text)))
 
-(defun create-message (channel envelope)
-  (make-instance 'message
-                 :channel channel
-                 :consumer-tag (cl-rabbit:envelope/consumer-tag envelope)
-                 :delivery-tag (cl-rabbit:envelope/delivery-tag envelope)
-                 :redelivered (cl-rabbit:envelope/redelivered envelope)
-                 :exchange (cl-rabbit:envelope/exchange envelope)
-                 :routing-key (cl-rabbit:envelope/routing-key envelope)
-                 :properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
-                 :body (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
-
 (defun message-ack (message &key multiple (channel (message-channel message)))
   (let ((consumer (message-consumer message)))
     (if (eq :sync (consumer-type consumer))

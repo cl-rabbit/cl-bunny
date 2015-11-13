@@ -190,6 +190,17 @@
                      (warn-nonexistent-channel)))))))
           result-tag)))))
 
+
+(defun create-deliver-method-from-cl-rabbit-envelope (envelope)
+  (make-instance 'amqp-method-basic-deliver
+                 :consumer-tag (cl-rabbit:envelope/consumer-tag envelope)
+                 :delivery-tag (cl-rabbit:envelope/delivery-tag envelope)
+                 :redelivered (cl-rabbit:envelope/redelivered envelope)
+                 :exchange (cl-rabbit:envelope/exchange envelope)
+                 :routing-key (cl-rabbit:envelope/routing-key envelope)
+                 :content-properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
+                 :content (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
+
 (defun wait-for-frame (connection)
   (log:trace "Waiting for frame on async connection: ~s" connection)
   (with-slots (channels cl-rabbit-connection) connection
@@ -206,7 +217,7 @@
                         (log:warn "Message received for closed channel: ~a" channel-id)))
                (if-let ((channel (gethash channel-id channels)))
                  (if (channel-open-p% channel)
-                     (channel-consume-message channel (create-message channel envelope))
+                     (channel.receive channel (create-deliver-method-from-cl-rabbit-envelope envelope))
                      ;; ELSE: We won't deliver messages to a closed channel
                      (log:warn "Incoming message on closed channel: ~s" channel))
                  ;; ELSE: Unused channel

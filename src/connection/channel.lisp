@@ -50,13 +50,6 @@
     (connection.register-channel channel)
     channel))
 
-(defun channel-consume-message (channel message &key return)
-  (if-let ((consumer (find-message-consumer channel message)))
-    (if (eq :sync (consumer-type consumer))
-        (safe-queue:mailbox-send-message (channel-mailbox channel) message)
-        (execute-consumer consumer message))
-    (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
-
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 

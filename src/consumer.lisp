@@ -108,3 +108,21 @@
       (amqp-basic-cancel-async (consumer-tag consumer) :no-wait t :channel (consumer-channel consumer))
       (amqp-basic-cancel (consumer-tag consumer) :no-wait t))
   (remove-consumer (consumer-channel consumer) (consumer-tag consumer)))
+
+(defun channel-consume-message (channel message &key return)
+  (if-let ((consumer (find-message-consumer channel message)))
+    (if (eq :sync (consumer-type consumer))
+        (safe-queue:mailbox-send-message (channel-mailbox channel) message)
+        (execute-consumer consumer message))
+    (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
+
+(defmethod channel.receive (channel (method amqp-method-basic-deliver))
+  (channel-consume-message channel (make-instance 'message
+                                                  :channel channel
+                                                  :body (amqp-method-content method)
+                                                  :properties (amqp-method-content-properties method)
+                                                  :routing-key (amqp-method-field-routing-key method)
+                                                  :exchange (amqp-method-field-exchange method)
+                                                  :redelivered (amqp-method-field-redelivered method)
+                                                  :delivery-tag (amqp-method-field-delivery-tag method)
+                                                  :consumer-tag (amqp-method-field-consumer-tag method))))
