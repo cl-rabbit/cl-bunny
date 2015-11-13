@@ -1,90 +1,9 @@
 (in-package :cl-bunny)
 
-(defvar *connection* nil
-  "Current AMQP connection")
-
-(defvar *channel* nil
-  "Current AMQP channel")
-
-(defun amqp-queue-declare (name &rest args &key passive durable exclusive auto-delete arguments (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:queue-declare
-           (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :queue name)
-                   args))))
-
-(defun amqp-queue-delete (name &rest args &key if-unused if-empty (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:queue-delete
-           (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel)name)
-                   args))))
-
-(defun amqp-queue-bind (name &rest args &key exchange routing-key arguments (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:queue-bind (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :queue name) args))))
-
-(defun amqp-queue-purge (queue &key (channel *channel*))
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (cl-rabbit:queue-purge (connection-cl-rabbit-connection (channel-connection channel))
-                           (channel-id channel)
-                           queue)))
-
-(defun amqp-exchange-declare (name &rest args &key (type "direct") (channel *channel*) passive durable auto-delete internal arguments (nowait nil nowait-supplied-p))
-  (remf args :channel)
-  (remf args :type)
-  (when nowait-supplied-p
-    (error "nowait not supported"))
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:exchange-declare
-           (append (list (connection-cl-rabbit-connection (channel-connection channel))
-                         (channel-id channel)
-                         name
-                         type)
-                   args)))
-  name)
-
-(defun amqp-exchange-delete (name &rest args &key if-unused (channel *channel*))
-  (remf args :channel)
-  (remf args :type)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:exchange-delete
-           (append (list (connection-cl-rabbit-connection (channel-connection channel))
-                         (channel-id channel)
-                         name)
-                   args))))
-
-(defun amqp-basic-qos (prefetch-count &rest args &key global
-                                                  (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:basic-qos (append
-                                      (list
-                                       (connection-cl-rabbit-connection (channel-connection channel))
-                                       (channel-id channel)
-                                       0
-                                       prefetch-count) args))))
-
-;; TODO: detect string, set encoding/content type appropriately. use this info to decode message body
-(defun amqp-basic-publish (body &rest args &key (exchange "") routing-key mandatory immediate content-properties
-                                            (encoding :utf-8)
-                                            (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:basic-publish (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) :content body) args))))
-
-
 (defun amqp-basic-consume% (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
                                              (channel *channel*))
   (remf args :channel)
   (apply #'cl-rabbit:basic-consume (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) queue) args)))
-
-(defun amqp-basic-consume (queue &rest args &key consumer-tag no-local no-ack exclusive arguments
-                                             (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (apply #'cl-rabbit:basic-consume (append (list (connection-cl-rabbit-connection (channel-connection channel)) (channel-id channel) queue) args))))
 
 (defun amqp-basic-cancel (consumer-tag &rest args &key no-wait (channel *channel*))
   (remf args :channel)

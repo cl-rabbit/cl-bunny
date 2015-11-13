@@ -1,5 +1,9 @@
 (in-package :cl-bunny)
 
+(defvar *channel* nil
+  "Current AMQP channel")
+(defconstant +max-channels+ 320)
+
 (deftype channel-mode ()
   `(and symbol (member :default :transactional :consume)))
 
@@ -31,9 +35,6 @@
    (on-exchange-return :type function
                        :initform nil
                        :accessor exchange-on-return-callback)))
-
-(defvar *channel*)
-(defconstant +max-channels+ 320)
 
 (defmethod channel-connection ((connection connection))
   connection)
@@ -153,8 +154,11 @@
     (setf (channel-open-p% channel) nil)
     (connection.deregister-channel channel)))
 
+#|
+TODO: promote :prefetch-size and prefetch-count to channel slots
 (defun (setf channel-prefetch) (value channel &key global)
-  (amqp-basic-qos value :global global :channel channel))
+  (qos :prefetch-count value :global global :channel channel))
+|#
 
 (defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
   (channel.send% channel

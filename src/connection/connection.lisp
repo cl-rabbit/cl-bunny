@@ -1,6 +1,7 @@
 (in-package :cl-bunny)
 
-(defvar *connection*)
+(defvar *connection* nil
+  "Current AMQP connection")
 
 (defparameter *connection-type* 'librabbitmq-connection)
 

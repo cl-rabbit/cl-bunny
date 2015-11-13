@@ -22,17 +22,6 @@
            #:message-header-value
            #:message-property-value
 
-
-           #:amqp-queue-declare
-           #:amqp-queue-bind
-           #:amqp-queue-delete
-
-           #:amqp-exchange-declare
-           #:amqp-exchange-delete
-
-           #:amqp-basic-publish
-           #:amqp-basic-consume
-
            ;; conditions
            #:authentication-error
            #:error-connection
