@@ -76,32 +76,18 @@
           (cl-rabbit:login-sasl-plain cl-rabbit-connection
                                       (connection-spec-vhost spec)
                                       (connection-spec-login spec)
-                                      (connection-spec-password spec))
+                                      (connection-spec-password spec)
+                                      :properties '(("product" . "cl-bunny(cl-rabbit transport)")
+                                                    ("version" . "0.1")
+                                                    ("copyright" . "Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and CONTRIBUTORS <https://github.com/cl-rabbit/cl-bunny/blob/master/CONTRIBUTORS.md>")
+                                                    ("information" . "see https://github.com/cl-rabbit/cl-bunny")
+                                                    ("capabilities" . (("connection.blocked" . nil)))))
           (setf (slot-value connection 'state) :open)))
     (cl-rabbit:rabbitmq-library-error ()
       (error 'transport-error))))
 
-(defun process-basic-return-method (state method channel)
-  (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
-    (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
-    (let* ((basic-return
-             (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
-                                        '(:struct cl-rabbit::amqp-basic-return-t)))
-           (method (make-instance 'amqp-method-basic-return
-                                  :reply-code (getf basic-return 'cl-rabbit::reply-code)
-                                  :reply-text (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::reply-text))
-                                  :exchange (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::exchange))
-                                  :routing-key (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::routing-key))
-                                  :content-properties (apply #'make-instance 'amqp-basic-class-properties
-                                                             (cl-rabbit::load-properties-to-plist
-                                                              (cffi:foreign-slot-value message
-                                                                                       '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties)))
-                                  :content (cl-rabbit::bytes->array
-                                            (cffi:foreign-slot-value message
-                                                                     '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))
-      (channel.receive channel method))))
-
-(defun process-basic-ack-method (state method channel)
+(defun process-basic-ack-method (connection method channel)
+  (declare (ignore connection))
   (assert (typep channel 'confirm-channel)) ;; TODO: specialize error
   (let ((basic-ack
           (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
@@ -110,10 +96,65 @@
                      (make-instance 'amqp-method-basic-ack :delivery-tag (getf basic-ack 'cl-rabbit::delivery-tag)
                                                            :multiple (getf basic-ack 'cl-rabbit::multiple)))))
 
+(defun process-basic-return-method (connection method channel)
+  (let ((cl-rabbit-connection (connection-cl-rabbit-connection connection)))
+    (cl-rabbit::with-state (state cl-rabbit-connection)
+      (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
+        (log:debug "Got return method, reading message")
+        (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
+        (let* ((basic-return
+                 (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                            '(:struct cl-rabbit::amqp-basic-return-t)))
+               (method (make-instance 'amqp-method-basic-return
+                                      :reply-code (getf basic-return 'cl-rabbit::reply-code)
+                                      :reply-text (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::reply-text))
+                                      :exchange (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::exchange))
+                                      :routing-key (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::routing-key))
+                                      :content-properties (apply #'make-instance 'amqp-basic-class-properties
+                                                                 (cl-rabbit::load-properties-to-plist
+                                                                  (cffi:foreign-slot-value message
+                                                                                           '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties)))
+                                      :content (cl-rabbit::bytes->array
+                                                (cffi:foreign-slot-value message
+                                                                         '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))
+          (channel.receive channel method))))))
+
+(defun process-channel-close-method (connection method channel)
+  (declare (ignore connection))
+  (let ((channel-close
+          (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                     '(:struct cl-rabbit::amqp-channel-close-t))))
+    (channel.receive channel
+                     (make-instance 'amqp-method-channel-close :reply-code (getf channel-close 'cl-rabbit::reply-code)
+                                                               :reply-text (getf channel-close 'cl-rabbit::reply-text)
+                                                               :class-id (getf channel-close 'cl-rabbit::class-id)
+                                                               :method-id (getf channel-close 'cl-rabbit::method-id)))))
+
+(defun process-connection-close-method (connection method)
+  (let ((connection-close
+          (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                     '(:struct cl-rabbit::amqp-connection-close-t))))
+    (connection.receive connection
+                        (make-instance 'amqp-method-connection-close :reply-code (getf connection-close 'cl-rabbit::reply-code)
+                                                                     :reply-text (cl-rabbit::bytes->string (getf connection-close 'cl-rabbit::reply-text))
+                                                                     :class-id (getf connection-close 'cl-rabbit::class-id)
+                                                                     :method-id (getf connection-close 'cl-rabbit::method-id)))))
+
+(defun process-connection-blocked-method (connection method)
+  (let ((connection-blocked
+          (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                     '(:struct cl-rabbit::amqp-connection-blocked-t))))
+    (connection.receive connection
+                        (make-instance 'amqp-method-connection-blocked :reason (cl-rabbit::bytes->string (getf connection-blocked 'cl-rabbit::reason))))))
+
+(defun process-connection-unblocked-method (connection method)
+  (declare (ignore method))
+  (connection.receive connection
+                      (make-instance 'amqp-method-connection-unblocked)))
+
 ;;; see https://github.com/alanxz/rabbitmq-c/blob/master/examples/amqp_consumer.c
 (defun process-unexpected-frame (connection)
-  (let ((cl-rabbit-connection (connection-cl-rabbit-connection connection))
-        (channels (connection-channels connection)))
+  (let ((cl-rabbit-connection (connection-cl-rabbit-connection connection)))
     (cl-rabbit::with-state (state cl-rabbit-connection)
       (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
         (let* ((result (cl-rabbit::amqp-simple-wait-frame state frame))
@@ -131,21 +172,22 @@
                      (getf method 'cl-rabbit::id)))
               (labels ((warn-nonexistent-channel ()
                          (log:warn "Message received for closed channel: ~a" channel-id)))
-                (if-let ((channel (gethash channel-id channels)))
-                  (if (channel-open-p% channel)
-                      (case method-id
-                        (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method state method channel))
-                        (#.cl-rabbit::+amqp-basic-return-method+
-                         ;;(cl-rabbit::amqp-put-back-frame state frame)
-                         (log:debug "Got return method, reading message")
-                         (process-basic-return-method state method channel))
-                        (#.cl-rabbit::+amqp-channel-close-method+ (error "Channel close not supported yet"))
-                        (#.cl-rabbit::+amqp-connection-close-method+ (error "Connection close not supported yet"))
-                        (otherwise (error "Unsupported unexpected method ~a" method-id)))
-                      ;; ELSE: We won't deliver messages to a closed channel
-                      (log:warn "Incoming message on closed channel: ~s" channel))
-                  ;; ELSE: Unused channel
-                  (warn-nonexistent-channel)))))
+                (case method-id
+                  (#.cl-rabbit::+amqp-connection-close-method+ (process-connection-close-method connection method))
+                  (#.cl-rabbit::+amqp-connection-blocked-method+ (process-connection-blocked-method connection method))
+                  (#.cl-rabbit::+amqp-connection-unblocked-method+ (process-connection-unblocked-method connection method))
+                  (otherwise
+                   (if-let ((channel (connection.get-channel channel-id)))
+                     (if (channel-open-p% channel)
+                         (case method-id
+                           (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method connection method channel))
+                           (#.cl-rabbit::+amqp-basic-return-method+  (process-basic-return-method connection method channel))
+                           (#.cl-rabbit::+amqp-channel-close-method+ (process-channel-close-method connection method channel))
+                           (otherwise (error "Unsupported unexpected method ~a" method-id)))
+                         ;; ELSE: We won't deliver messages to a closed channel
+                         (log:warn "Incoming message on closed channel: ~s" channel))
+                     ;; ELSE: Unused channel
+                     (warn-nonexistent-channel)))))))
           result-tag)))))
 
 (defun wait-for-frame (connection)
@@ -227,6 +269,11 @@
           (cl-rabbit:destroy-connection cl-rabbit-connection)
           (if (functionp ret)
               (funcall ret)))))))
+
+(defmethod connection.close-ok% ((connection librabbitmq-connection) callback)
+  (connection.send connection connection (make-instance 'amqp-method-connection-close-ok))
+  (throw 'stop-connection callback)
+  t)
 
 (defmethod properties->alist ((properties list))
   (let ((properties (copy-list properties)))

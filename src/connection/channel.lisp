@@ -35,6 +35,12 @@
 (defvar *channel*)
 (defconstant +max-channels+ 320)
 
+(defmethod channel-connection ((connection connection))
+  connection)
+
+(defmethod channel-open-p% ((connection connection))
+  (connection-open-p connection))
+
 (defmethod channel-open-p (&optional (channel *channel*))
   (channel-open-p% channel))
 
@@ -199,3 +205,7 @@
 
 
 (defgeneric channel.receive (channel method))
+
+(defmethod channel.receive (channel (method amqp-method-channel-close))
+  (log:debug "Received channel.close ~a" method)
+  (channel.close-ok% channel))

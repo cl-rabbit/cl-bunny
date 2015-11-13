@@ -63,6 +63,14 @@
 (defun connection.deregister-channel (channel)
   (deregister-channel (channel-connection channel) channel))
 
+(defgeneric get-channel (connection channel-id))
+
+(defmethod get-channel ((connection connection) channel-id)
+  (gethash channel-id (connection-channels connection)))
+
+(defun connection.get-channel (channel-id &key (connection *connection*))
+  (get-channel connection channel-id))
+
 (defmacro execute-in-connection-thread ((&optional (connection '*connection*)) &body body)
   `(funcall (connection-lambda ,connection)
             (lambda () ,@body)))
@@ -105,12 +113,19 @@
                 (bt:join-thread (connection-thread connection)))
          (connection-closed-error () (log:debug "Closing already closed connection"))))))
 
-(defun connection.close-ok% (connection callback)
-  (connection.send connection connection (make-instance 'amqp-method-connection-close-ok))
-  (throw 'stop-connection callback)
-  t)
-
 (defgeneric connection.send (connection channel method))
 
 (defmethod connection.send :around ((connection connection) channel method)
   (call-next-method))
+
+(defgeneric connection.receive (connection method))
+
+(defmethod connection.receive ((connection connection) (method amqp-method-connection-close))
+  (log:debug "Received connection.closed ~a" method)
+  (connection.close-ok% connection nil))
+
+(defmethod connection.receive ((connection connection) (method amqp-method-connection-blocked))
+  (log:error "Connection blocked ~a" method))
+
+(defmethod connection.receive ((connection connection) (method amqp-method-connection-unblocked))
+  (log:error "Connection unblocked ~a" method))
