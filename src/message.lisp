@@ -38,10 +38,10 @@
                :reader returned-message-reply-text)))
 
 (defun message-ack (message &key multiple (channel (message-channel message)))
-  (let ((consumer (message-consumer message)))
-    (if (eq :sync (consumer-type consumer))
-        (amqp-basic-ack (message-delivery-tag message) :multiple multiple :channel channel)
-        (amqp-basic-ack-async (message-delivery-tag message) :multiple multiple :channel channel))))
+  (channel.send% channel
+      (make-instance 'amqp-method-basic-ack
+                     :delivery-tag (message-delivery-tag message)
+                     :multiple multiple)))
 
 (defun message-nack (message &key multiple requeue (channel (message-channel message)))
   (let ((consumer (message-consumer message)))

@@ -513,6 +513,12 @@
                    :consumer-tag (amqp-method-field-consumer-tag method);; I'm lazy here because librabbitmq is sync anyway
                    )))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-ack))
+  (cl-rabbit:basic-ack (connection-cl-rabbit-connection connection)
+                       (channel-id channel)
+                       (amqp-method-field-delivery-tag method)
+                       :multiple (amqp-method-field-multiple method)))
+
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
                             (channel-id channel))
