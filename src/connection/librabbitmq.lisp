@@ -177,7 +177,7 @@
                   (#.cl-rabbit::+amqp-connection-blocked-method+ (process-connection-blocked-method connection method))
                   (#.cl-rabbit::+amqp-connection-unblocked-method+ (process-connection-unblocked-method connection method))
                   (otherwise
-                   (if-let ((channel (connection.get-channel channel-id)))
+                   (if-let ((channel (connection.get-channel channel-id :connection connection)))
                      (if (channel-open-p% channel)
                          (case method-id
                            (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method connection method channel))
