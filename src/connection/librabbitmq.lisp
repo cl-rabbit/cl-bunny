@@ -519,6 +519,13 @@
                        (amqp-method-field-delivery-tag method)
                        :multiple (amqp-method-field-multiple method)))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-nack))
+  (cl-rabbit:basic-nack (connection-cl-rabbit-connection connection)
+                            (channel-id channel)
+                            (amqp-method-field-delivery-tag method)
+                            :multiple (amqp-method-field-multiple method)
+                            :requeue (amqp-method-field-requeue method)))
+
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
                             (channel-id channel))

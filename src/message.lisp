@@ -44,10 +44,11 @@
                      :multiple multiple)))
 
 (defun message-nack (message &key multiple requeue (channel (message-channel message)))
-  (let ((consumer (message-consumer message)))
-    (if (eq :sync (consumer-type consumer))
-        (amqp-basic-nack (message-delivery-tag message) :multiple multiple :requeue requeue :channel channel)
-        (amqp-basic-nack-async (message-delivery-tag message) :multiple multiple :requeue requeue :channel channel))))
+  (channel.send% channel
+                 (make-instance 'amqp-method-basic-nack
+                   :delivery-tag (message-delivery-tag message)
+                   :multiple multiple
+                   :requeue requeue)))
 
 (defun message-header-value (message name)
   (header-value
