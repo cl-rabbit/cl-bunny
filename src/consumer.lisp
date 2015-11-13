@@ -85,19 +85,21 @@
     (let ((*channel* channel))
       (funcall fn message))))
 
-(defun subscribe (queue fn &rest args &key (type :async) consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
-  (remf args :type)
-  (channel.send% channel (make-instance 'amqp-method-basic-consume
-                                        :queue (queue-name queue)
-                                        :consumer-tag consumer-tag
-                                        :no-local no-local
-                                        :no-ack no-ack
-                                        :exclusive exclusive
-                                        :nowait nowait
-                                        :arguments arguments)
-    (add-consumer channel queue (amqp-method-field-consumer-tag reply) type (if (eq type :async)
-                                                                                (wrap-async-subscribe-with-channel fn channel)
-                                                                                fn))))
+(defun subscribe (queue fn  &key (type :async) consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
+  (execute-in-connection-thread-sync ((channel-connection channel))
+    (let ((reply (channel.send channel (make-instance 'amqp-method-basic-consume
+                                                      :queue (queue-name queue)
+                                                      :consumer-tag consumer-tag
+                                                      :no-local no-local
+                                                      :no-ack no-ack
+                                                      :exclusive exclusive
+                                                      :nowait nowait
+                                                      :arguments arguments))))
+      (add-consumer channel queue
+                    (amqp-method-field-consumer-tag reply) type
+                    (if (eq type :async)
+                        (wrap-async-subscribe-with-channel fn channel)
+                        fn)))))
 
 (defun subscribe-sync (queue &key consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (subscribe queue #'identity :type :sync
@@ -108,11 +110,13 @@
                               :arguments arguments
                               :channel channel))
 
-(defun unsubscribe (consumer)
-  (if (eq (consumer-type consumer) :async)
-      (amqp-basic-cancel-async (consumer-tag consumer) :no-wait t :channel (consumer-channel consumer))
-      (amqp-basic-cancel (consumer-tag consumer) :no-wait t))
-  (remove-consumer (consumer-channel consumer) (consumer-tag consumer)))
+(defun unsubscribe (consumer &key nowait)
+  (channel.send% (consumer-channel consumer)
+      (make-instance 'amqp-method-basic-cancel
+                     :consumer-tag (consumer-tag consumer)
+                     :nowait nowait)
+    (assert (equal (consumer-tag consumer) (amqp-method-field-consumer-tag reply)))
+    (remove-consumer (consumer-channel consumer) (consumer-tag consumer))))
 
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))

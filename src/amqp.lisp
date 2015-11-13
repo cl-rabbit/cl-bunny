@@ -1,18 +1,5 @@
 (in-package :cl-bunny)
 
-(defun amqp-basic-cancel (consumer-tag &rest args &key no-wait (channel *channel*))
-  (remf args :channel)
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (cl-rabbit:basic-cancel (connection-cl-rabbit-connection (channel-connection channel))
-                            (channel-id channel)
-                            consumer-tag)))
-
-(defun amqp-basic-cancel-async (consumer-tag &rest args &key no-wait (channel *channel*))
-  (remf args :channel)
-  (cl-rabbit:basic-cancel (connection-cl-rabbit-connection (channel-connection channel))
-                          (channel-id channel)
-                          consumer-tag))
-
 (defun amqp-basic-ack (delivery-tag &rest args &key multiple (channel *channel*))
   (remf args :channel)
   (execute-in-connection-thread-sync ((channel-connection channel))

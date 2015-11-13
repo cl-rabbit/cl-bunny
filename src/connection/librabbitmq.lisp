@@ -502,7 +502,16 @@
                                :exclusive (amqp-method-field-exclusive method)
                                :arguments (amqp-method-field-arguments method))
     (make-instance 'amqp-method-basic-consume-ok
-                    :consumer-tag consumer-tag)))
+                   :consumer-tag consumer-tag)))
+
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-cancel))
+  (multiple-value-bind (consumer-tag)
+      (cl-rabbit:basic-cancel (connection-cl-rabbit-connection connection)
+                              (channel-id channel)
+                              (amqp-method-field-consumer-tag method))
+    (make-instance 'amqp-method-basic-cancel-ok
+                   :consumer-tag (amqp-method-field-consumer-tag method);; I'm lazy here because librabbitmq is sync anyway
+                   )))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
