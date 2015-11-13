@@ -21,23 +21,31 @@
                "safe-queue"
                "eventfd"
                "log4cl")
-  :serial t
-  :components ((:file "package")
-               (:file "src/support/int-allocator")
-               (:file "src/support/channel-id-allocator")
-               (:file "src/support/threaded-promise")
-               (:file "src/conditions")
-               (:file "src/properties-and-headers")
-               (:file "src/message")
-               (:file "src/connection/spec")
-               (:file "src/connection/pool")
-               (:file "src/connection/connection")
-               (:file "src/connection/librabbitmq")
-               (:file "src/connection/channel")
-               (:file "src/queue")
-               (:file "src/exchange")
-               (:file "src/consumer")
-               (:file "src/basic")
-               (:file "src/confirm")
-               (:file "src/tx")
-               (:file "src/amqp")))
+  :components ((:module "src"
+                :serial t
+                :components
+                ((:file "package")
+                 (:module "support"
+                  :serial t
+                  :components
+                  ((:file "int-allocator")
+                   (:file "channel-id-allocator")
+                   (:file "threaded-promise")))
+                 (:file "conditions")
+                 (:file "properties-and-headers")
+                 (:file "message")
+                 (:module "connection"
+                  :serial t
+                  :components
+                  ((:file "spec")
+                   (:file "pool")
+                   (:file "connection")
+                   (:file "librabbitmq")
+                   (:file "channel")))
+                 (:file "queue")
+                 (:file "exchange")
+                 (:file "consumer")
+                 (:file "basic")
+                 (:file "confirm")
+                 (:file "tx")
+                 (:file "amqp")))))
