@@ -114,3 +114,19 @@
                      :nowait nowait
                      :arguments arguments)
     destination))
+
+(defmethod channel.receive (channel (method amqp-method-basic-return))
+  (let* ((message (make-instance 'returned-message :channel channel
+                                                   :reply-code (amqp-method-field-reply-code method)
+                                                   :reply-text (amqp-method-field-reply-text method)
+                                                   :exchange (amqp-method-field-exchange method)
+                                                   :routing-key (amqp-method-field-routing-key method)
+                                                   :body (amqp-method-content method)
+                                                   :properties (amqp-method-content-properties method)))
+         (exchange (get-registered-exchange channel (message-exchange message)))
+         (callback (or (and exchange
+                            (exchange-on-return-callback exchange))
+                       (exchange-on-return-callback channel))))
+    (if callback
+        (funcall callback message)
+        (log:warn "Got unhandled returned message"))))

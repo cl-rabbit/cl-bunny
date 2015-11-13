@@ -81,33 +81,27 @@
     (cl-rabbit:rabbitmq-library-error ()
       (error 'transport-error))))
 
-(defun process-return-method (state method channel)
+(defun process-basic-return-method (state method channel)
   (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
     (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
     (let* ((basic-return
              (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
                                         '(:struct cl-rabbit::amqp-basic-return-t)))
-           (message (make-instance 'returned-message
-                                   :channel channel
-                                   :reply-code (getf basic-return 'cl-rabbit::reply-code)
-                                   :reply-text (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::reply-text))
-                                   :exchange (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::exchange))
-                                   :routing-key (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::routing-key))
-                                   :properties (cl-rabbit::load-properties-to-alist
-                                                (cffi:foreign-slot-value message
-                                                                         '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties))
-                                   :body (cl-rabbit::bytes->array
-                                          (cffi:foreign-slot-value message
-                                                                   '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))
-      (let* ((exchange (get-registered-exchange channel (message-exchange message)))
-             (callback (or (and exchange
-                                (exchange-on-return-callback exchange))
-                           (exchange-on-return-callback channel))))
-        (if callback
-            (funcall callback message)
-            (log:warn "Got unhandled returned message"))))))
+           (method (make-instance 'amqp-method-basic-return
+                                  :reply-code (getf basic-return 'cl-rabbit::reply-code)
+                                  :reply-text (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::reply-text))
+                                  :exchange (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::exchange))
+                                  :routing-key (cl-rabbit::bytes->string (getf basic-return 'cl-rabbit::routing-key))
+                                  :content-properties (apply #'make-instance 'amqp-basic-class-properties
+                                                             (cl-rabbit::load-properties-to-plist
+                                                              (cffi:foreign-slot-value message
+                                                                                       '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties)))
+                                  :content (cl-rabbit::bytes->array
+                                            (cffi:foreign-slot-value message
+                                                                     '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))
+      (channel.receive channel method))))
 
-(defun process-ack-method (state method channel)
+(defun process-basic-ack-method (state method channel)
   (assert (typep channel 'confirm-channel)) ;; TODO: specialize error
   (let ((basic-ack
           (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
@@ -140,11 +134,11 @@
                 (if-let ((channel (gethash channel-id channels)))
                   (if (channel-open-p% channel)
                       (case method-id
-                        (#.cl-rabbit::+amqp-basic-ack-method+ (process-ack-method state method channel))
+                        (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method state method channel))
                         (#.cl-rabbit::+amqp-basic-return-method+
                          ;;(cl-rabbit::amqp-put-back-frame state frame)
                          (log:debug "Got return method, reading message")
-                         (process-return-method state method channel))
+                         (process-basic-return-method state method channel))
                         (#.cl-rabbit::+amqp-channel-close-method+ (error "Channel close not supported yet"))
                         (#.cl-rabbit::+amqp-connection-close-method+ (error "Connection close not supported yet"))
                         (otherwise (error "Unsupported unexpected method ~a" method-id)))
@@ -279,7 +273,7 @@
       (add-prop :cluster-id (amqp-property-cluster-id properties)))))
 
 (defmethod connection.send :before ((connection librabbitmq-connection) channel method)
-  (when (and (amqp-method-synchronous-p method)             
+  (when (and (amqp-method-synchronous-p method)
              (ignore-errors (amqp-method-field-nowait method)))
     (log:warn "Librabbitmq connection: nowait not supported")))
 

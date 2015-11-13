@@ -157,8 +157,6 @@
 (defun (setf channel-prefetch) (value channel &key global)
   (amqp-basic-qos value :global global :channel channel))
 
-(defgeneric channel.receive (channel method))
-
 (defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
   (channel.send% channel
       (make-instance 'amqp-method-basic-publish
@@ -199,8 +197,5 @@
   (setf (gethash (exchange-name exchange) (channel-exchanges channel))
         exchange))
 
-(defun default-exchange (&optional (channel *channel*))
-  (or
-   (get-registered-exchange channel "")
-   (register-exchange channel (make-instance 'exchange :channel channel
-                                                       :name ""))))
+
+(defgeneric channel.receive (channel method))
