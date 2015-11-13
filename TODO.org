@@ -1,7 +1,3 @@
-- [ ] Connection string
-  - [ ] Parser tests
-  - [ ] Printer
-  - [ ] Connection parameters supprot via url query
 - [ ] Peplace old src/amqp.lisp functions with channel.send
   - [ ] amqp-basic-consume%
   - [ ] amqp-basic-cancel
@@ -10,6 +6,16 @@
   - [ ] amqp-basic-ack-async
   - [ ] amqp-basic-nack
   - [ ] amqp-basic-nack-async
+- [ ] Connection string
+  - [ ] Parser tests
+  - [ ] Printer
+  - [ ] Connection parameters supprot via url query
+- [ ] Connection
+  - [ ] handle server properties
+  - [ ] handle locales
+  - [ ] handle Connection.Tune
+- [ ] Channel id allocator
+  - [ ] Tests
 - [ ] Print-objects for
   - [ ] connection spec
   - [ ] connection
