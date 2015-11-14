@@ -6,14 +6,20 @@
   - [X] amqp-basic-ack-async
   - [X] amqp-basic-nack
   - [X] amqp-basic-nack-async
-- [ ] Connection string
-  - [ ] Parser tests
+- [-] Connection string
+  - [X] Parser tests
+  - [ ] Query string tests
   - [ ] Printer
   - [ ] Connection parameters supprot via url query
+- [-] Connection spec as list
+  - [ ] Tests
 - [ ] Connection
   - [ ] handle server properties
   - [ ] handle locales
   - [ ] handle Connection.Tune
+  - [ ] Heartbeats
+    - [ ] support/implementation
+    - [ ] tests
 - [ ] Channel id allocator
   - [ ] Tests
 - [ ] Print-objects for
