@@ -13,6 +13,11 @@
   - [ ] Connection parameters supprot via url query
 - [ ] Connection spec as list
   - [ ] Tests
+- [-] Connections Pool
+  - [X] Implementation
+  - [X] Tests
+  - [X] Printer
+  - [ ] Printer tests
 - [ ] Connection
   - [ ] handle server properties
   - [ ] handle locales
@@ -22,9 +27,10 @@
     - [ ] tests
 - [ ] Channel id allocator
   - [ ] Tests
-- [ ] Print-objects for
-  - [ ] connection spec
+- [-] Print-objects for
+  - [X] connection spec
   - [ ] connection
+  - [ ] connections pool
   - [ ] message
   - [ ] queue
   - [ ] channel
