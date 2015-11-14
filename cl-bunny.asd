@@ -47,5 +47,4 @@
                  (:file "consumer")
                  (:file "basic")
                  (:file "confirm")
-                 (:file "tx")
-                 (:file "amqp")))))
+                 (:file "tx")))))
