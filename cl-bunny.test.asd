@@ -21,6 +21,11 @@
                 :components
                 ((:file "package")
                  (:test-file "dummy")
+                 (:module "unit"
+                  :serial t
+                  :components
+                  ((:test-file "channel-send")
+                   (:test-file "connection-spec")))
                  (:module "integration"
                   :serial t
                   :components
@@ -32,11 +37,7 @@
                    (:module "exchanges"
                     :serial t
                     :components
-                    ((:test-file "fanout")))))
-                 (:module "unit"
-                  :serial t
-                  :components
-                  ((:test-file "channel-send"))))))
+                    ((:test-file "fanout"))))))))
   :defsystem-depends-on (:prove-asdf)
   :perform (test-op :after (op c)
                     (funcall (intern #.(string :run-test-system) :prove-asdf) c)))
