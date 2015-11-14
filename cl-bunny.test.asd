@@ -21,6 +21,10 @@
                 :components
                 ((:file "package")
                  (:test-file "dummy")
+                 (:module "utils"
+                  :serial t
+                  :components
+                  ((:file "printer")))
                  (:module "unit"
                   :serial t
                   :components
