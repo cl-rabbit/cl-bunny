@@ -33,6 +33,15 @@
            #:properties-headers
            #:header-value
 
+           ;; connections pool
+           #:*connections-pool*
+           #:connections-pool-base
+           #:eq-connections-pool
+           #:connections-pool.get
+           #:connections-pool.add
+           #:connections-pool.remove
+           #:connections-pool.find-or-run
+
            #:*connection*
            #:connection.new
            #:connection.open

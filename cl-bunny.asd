@@ -37,6 +37,7 @@
                   :serial t
                   :components
                   ((:file "spec")
+                   (:file "connection-base")
                    (:file "pool")
                    (:file "connection")
                    (:file "librabbitmq")

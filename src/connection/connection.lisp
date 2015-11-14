@@ -1,28 +1,11 @@
 (in-package :cl-bunny)
 
-(defvar *connection* nil
-  "Current AMQP connection")
-
-(defparameter *connection-type* 'librabbitmq-connection)
-
-(defclass connection ()
-  ((spec :initarg :spec :reader connection-spec)
-   (channel-id-allocator :type channel-id-allocator
-                         :initform (new-channel-id-allocator +max-channels+)
-                         :reader connection-channel-id-allocator)
-
-   (channels :type hash-table
-             :initform (make-hash-table :synchronized t)
-             :reader connection-channels)
-
-   (pool :initform nil :accessor connection-pool)
-
-   (event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
+(defclass threaded-connection (connection)
+  ((event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
    (control-mailbox :initform (safe-queue:make-queue) :reader connection-control-mailbox)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
-   (connection-thread :reader connection-thread)
-   (state :initform :closed :reader connection-state)))
+   (connection-thread :reader connection-thread)))
 
 (defun connection-open-p (connection)
   (and connection
@@ -33,9 +16,6 @@
 (defun check-connection-alive (connection)
   (when (connection-open-p connection)
     connection))
-
-(defun run-new-connection (spec)
-  (connection.open (connection.new spec)))
 
 (defun setup-execute-in-connection-lambda (connection)
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection

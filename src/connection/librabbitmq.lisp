@@ -1,6 +1,6 @@
 (in-package :cl-bunny)
 
-(defclass librabbitmq-connection (connection)
+(defclass librabbitmq-connection (threaded-connection)
   ((cl-rabbit-connection :type cl-rabbit::connection
                          :initarg :connection
                          :reader connection-cl-rabbit-connection)))
@@ -33,6 +33,7 @@
 
 (defun connection.new (&optional (spec "amqp://") &key shared)
   (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
+                                                     :pool-tag spec
                                                      :connection (cl-rabbit:new-connection))))
     (setup-execute-in-connection-lambda connection)
     connection))
@@ -49,8 +50,8 @@
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
               (*connection* (if ,shared-val
-                                (find-or-run-new-connection ,connection-spec-val)
-                                (run-new-connection ,connection-spec-val))))
+                                (connections-pool.find-or-run ,connection-spec-val)
+                                (connection.open (connection.new ,connection-spec-val)))))
          (unwind-protect
               (progn
                 ,@body)
@@ -268,7 +269,7 @@
           (eventfd.close control-fd)
           (log:debug "Stopping AMQP connection")
           (when (connection-pool connection)
-            (remove-connection-from-pool connection))
+            (connections-pool.remove connection))
           (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
           (log:debug "closed-all-channels")
           ;; drain control mailbox
