@@ -14,7 +14,7 @@
     (reject (error 'channel-send-test-error))))
 
 (subtest "Sync channel.send"
-  (bunny:with-connection ("amap://")
+  (bunny:with-connection ("amqp://")
     (bunny:with-channel ()
       (is-values (channel.send bunny::*channel* :ok)
                  '(1 2 3))
@@ -24,7 +24,7 @@
 (subtest "Async channel.send"
   (let ((vals)
         (e))
-    (bunny:with-connection ("amap://")
+    (bunny:with-connection ("amqp://")
       (bunny:with-channel ()
         (let ((channel bunny::*channel*))
           (bunny::execute-in-connection-thread (bunny::*connection*)
