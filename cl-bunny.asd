@@ -33,7 +33,6 @@
                    (:file "threaded-promise")))
                  (:file "conditions")
                  (:file "properties-and-headers")
-                 (:file "message")
                  (:module "connection"
                   :serial t
                   :components
@@ -42,6 +41,7 @@
                    (:file "connection")
                    (:file "librabbitmq")
                    (:file "channel")))
+                 (:file "message")
                  (:file "queue")
                  (:file "exchange")
                  (:file "consumer")
