@@ -9,9 +9,9 @@
 - [-] Connection string
   - [X] Parser tests
   - [ ] Query string tests
-  - [ ] Printer
+  - [X] Printer
   - [ ] Connection parameters supprot via url query
-- [-] Connection spec as list
+- [ ] Connection spec as list
   - [ ] Tests
 - [ ] Connection
   - [ ] handle server properties
