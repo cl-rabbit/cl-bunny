@@ -44,6 +44,7 @@
            #:connection-spec-host
            #:connection-spec-port
            #:connection-spec-vhost
+           #:connection-spec-use-tls-p
            #:connection-open-p
 
            #:*channel*

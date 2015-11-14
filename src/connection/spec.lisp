@@ -5,28 +5,43 @@
   (port 5672 :type fixnum)
   (vhost "/" :type string)
   (login "guest" :type string)
-  (password "guest" :type string))
+  (password "guest" :type string)
+  (use-tls-p nil :type boolean))
 
 (defmethod make-connection-spec ((raw list))
   (error "Not implemented"))
 
-(defun check-connection-string-scheme (scheme)
-  (or (equal scheme "amqp")
-      (equal scheme "amqps")))
-
-(defun check-connection-string-host (host)
-  (or host "localhost"))
-
-(defun check-connection-string-port (port)
-  (or port 5672))
-
-(defun check-connection-string-vhost (vhost)
-  (or vhost "/"))
+(defun maybe-unescape-component (value)
+  (when value
+    (quri:url-decode value)))
 
 (defun parse-user-info (userinfo)
   (destructuring-bind (login &optional (password ""))
       (split-sequence:split-sequence #\: userinfo)
-    (list login password)))
+    (list (quri:url-decode login) (quri:url-decode password))))
+
+(defun check-connection-string-scheme (scheme)
+  (assert (or (equal scheme "amqp")
+              (equal scheme "amqps")))
+  (if (equal scheme "amqps")
+      t))
+
+(defun check-connection-string-host (host)
+  (or (maybe-unescape-component host) "localhost"))
+
+(defun check-connection-string-port (scheme port)
+  (or port (if (equal scheme "amqp")
+               5672
+               5671)))
+
+(defun check-vhost-single-segment (vhost)
+  (and vhost
+       (if (find #\/ vhost :start 1)
+           (error "Multi-segment vhost") ;; TODO: specialize error
+          (subseq vhost 1))))
+
+(defun check-connection-string-vhost (vhost)
+  (or (maybe-unescape-component (check-vhost-single-segment vhost)) "/"))
 
 (defun check-connection-string-credentials (userinfo)
   (cond
@@ -41,12 +56,13 @@
   (multiple-value-bind (scheme userinfo host port path query fragment)
       (quri:parse-uri raw)
     (declare (ignore query fragment))
-    (check-connection-string-scheme scheme)
-    (let ((host (check-connection-string-host host))
-          (port (check-connection-string-port port))
+    (let ((use-tls (check-connection-string-scheme scheme))
+          (host (check-connection-string-host host))
+          (port (check-connection-string-port scheme port))
           (credentials (check-connection-string-credentials userinfo))
           (vhost (check-connection-string-vhost path)))
-      (make-connection-spec% :host host
+      (make-connection-spec% :use-tls-p use-tls
+                             :host host
                              :port port
                              :vhost vhost
                              :login (first credentials)
