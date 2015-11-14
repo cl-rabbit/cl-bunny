@@ -6,6 +6,8 @@
   - [X] amqp-basic-ack-async
   - [X] amqp-basic-nack
   - [X] amqp-basic-nack-async
+- [ ] Protocol
+  - [ ] Basic.Get
 - [-] Connection string
   - [X] Parser tests
   - [ ] Query string tests
