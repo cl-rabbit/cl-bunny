@@ -34,8 +34,9 @@
                               ,@consumers)))
          (unwind-protect
               (progn ,@body)
-           (loop for consumer in ,new-consumers do
-                    (unsubscribe consumer)))))))
+           (ignore-some-conditions (connection-closed-error channel-closed-error)
+             (loop for consumer in ,new-consumers do
+                      (unsubscribe consumer))))))))
 
 (defun add-consumer (channel queue tag type lambda)
   (assert (null (gethash tag (channel-consumers channel))) (tag) 'channel-consumer-already-added channel tag)
@@ -111,11 +112,12 @@
                               :channel channel))
 
 (defun unsubscribe (consumer &key nowait)
-  (channel.send% (consumer-channel consumer)
-      (make-instance 'amqp-method-basic-cancel
-                     :consumer-tag (consumer-tag consumer)
-                     :nowait nowait)
-    (assert (equal (consumer-tag consumer) (amqp-method-field-consumer-tag reply)))
+  (unwind-protect
+       (channel.send% (consumer-channel consumer)
+           (make-instance 'amqp-method-basic-cancel
+                          :consumer-tag (consumer-tag consumer)
+                          :nowait nowait)
+         (assert (equal (consumer-tag consumer) (amqp-method-field-consumer-tag reply))))
     (remove-consumer (consumer-channel consumer) (consumer-tag consumer))))
 
 (defun channel-consume-message (channel message &key return)
