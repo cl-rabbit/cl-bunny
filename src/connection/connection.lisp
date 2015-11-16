@@ -1,5 +1,7 @@
 (in-package :cl-bunny)
 
+(defparameter *force-timeout* nil)
+
 (defclass threaded-connection (connection)
   ((event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
@@ -84,20 +86,25 @@
                  (values-list ,return)))
            (error 'connection-closed-error :connection ,connection%)))))
 
-(defun connection.close (&optional (connection *connection*))
+(defun connection.close (&key (connection *connection*) (timeout *force-timeout*))
   (if (eq (bt:current-thread) (connection-thread connection))
       (throw 'stop-connection (values))
-      (progn
-        (handler-case
-         (progn (execute-in-connection-thread (connection)
-                  (connection.close connection))
-                (bt:join-thread (connection-thread connection)))
-         (connection-closed-error () (log:debug "Closing already closed connection"))))))
+      (if (bt:thread-alive-p (connection-thread connection))
+          (handler-case
+              (progn (execute-in-connection-thread (connection)
+                       (connection.close :connection connection))
+                     (handler-case
+                         (sb-thread:join-thread (connection-thread connection) :timeout timeout)
+                       (sb-thread:join-thread-error (e)
+                         (case (sb-thread::join-thread-problem e)
+                           (:timeout (log:error "Connection thread stalled?")
+                            (sb-thread:terminate-thread (connection-thread connection)))
+                           (:abort (log:error "Connection thread aborted"))
+                           (t (log:error "Connection state is unknown"))))))
+            (connection-closed-error () (log:debug "Closing already closed connection")))
+          t)))
 
 (defgeneric connection.send (connection channel method))
-
-(defmethod connection.send :around ((connection connection) channel method)
-  (call-next-method))
 
 (defgeneric connection.receive (connection method))
 

@@ -54,8 +54,6 @@
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 
-(defparameter *force-timeout* nil)
-
 (defmethod channel.send :around (channel method)
   (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
       ;; we are inside of connection thread, just return promise
