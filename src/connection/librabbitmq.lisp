@@ -275,7 +275,7 @@
           ;; drain control mailbox
           (loop for lambda = (safe-queue:dequeue control-mailbox)
                 while lambda
-                do (funcall lambda))
+                do (ignore-errors (funcall lambda)))
           (log:debug "queue drained")
           (setf (slot-value connection 'state) :closed)
           (cl-rabbit:destroy-connection cl-rabbit-connection)
