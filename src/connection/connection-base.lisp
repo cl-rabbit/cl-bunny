@@ -13,6 +13,6 @@
    (channels :type hash-table
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
-   (ppol-tag :initarg :pool-tag :accessor connection-pool-tag)
+   (pool-tag :initarg :pool-tag :accessor connection-pool-tag)
    (pool :initform nil :accessor connection-pool)
    (state :initform :closed :reader connection-state)))
