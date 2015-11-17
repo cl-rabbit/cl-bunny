@@ -1,5 +1,5 @@
 (in-package :cl-bunny.test)
 
-(defun actually-print-connection-spec (spec)
+(defun print-amqp-object-to-string (object)
   (with-output-to-string (stream)
-    (bunny::actually-print-connection-spec spec stream)))
+    (bunny::print-amqp-object object stream)))

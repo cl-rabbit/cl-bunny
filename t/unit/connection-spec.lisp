@@ -14,7 +14,7 @@
       (is (connection-spec-vhost spec) "vhost")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://user:pass@host:10000/vhost")))
+      (is (print-amqp-object-to-string spec) "amqp://user:pass@host:10000/vhost")))
 
   (subtest "amqp://user%61:%61pass@ho%61st:10000/v%2fhost"
     (let ((spec (bunny::make-connection-spec "amqp://user%61:%61pass@ho%61st:10000/v%2fhost")))
@@ -25,7 +25,7 @@
       (is (connection-spec-vhost spec) "v/host")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://usera:apass@hoast:10000/v%2Fhost")))
+      (is (print-amqp-object-to-string spec) "amqp://usera:apass@hoast:10000/v%2Fhost")))
 
   (subtest "amqp://"
     (let ((spec (bunny::make-connection-spec "amqp://")))
@@ -36,7 +36,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://")))
+      (is (print-amqp-object-to-string spec) "amqp://")))
 
   (subtest "amqps://"
     (let ((spec (bunny::make-connection-spec "amqps://")))
@@ -47,7 +47,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) t "Do use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqps://")))
+      (is (print-amqp-object-to-string spec) "amqps://")))
 
   (subtest "amqp://:@/"
     (let ((spec (bunny::make-connection-spec "amqp://:@/")))
@@ -58,7 +58,7 @@
       (is (connection-spec-vhost spec) "")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://:@/")))
+      (is (print-amqp-object-to-string spec) "amqp://:@/")))
 
   (subtest "amqp://user@"
     (let ((spec (bunny::make-connection-spec "amqp://user@")))
@@ -69,7 +69,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://user@")))
+      (is (print-amqp-object-to-string spec) "amqp://user@")))
 
   (subtest "amqp://user:pass@"
     (let ((spec (bunny::make-connection-spec "amqp://user:pass@")))
@@ -80,7 +80,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://user:pass@")))
+      (is (print-amqp-object-to-string spec) "amqp://user:pass@")))
 
   (subtest "amqp://host"
     (let ((spec (bunny::make-connection-spec "amqp://host")))
@@ -91,7 +91,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://host")))
+      (is (print-amqp-object-to-string spec) "amqp://host")))
 
   (subtest "amqp://:10000"
     (let ((spec (bunny::make-connection-spec "amqp://:10000")))
@@ -102,7 +102,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://:10000")))
+      (is (print-amqp-object-to-string spec) "amqp://:10000")))
 
   (subtest "amqp:///vhost"
     (let ((spec (bunny::make-connection-spec "amqp:///vhost")))
@@ -113,7 +113,7 @@
       (is (connection-spec-vhost spec) "vhost")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp:///vhost")))
+      (is (print-amqp-object-to-string spec) "amqp:///vhost")))
 
   (subtest "amqp://host/"
     (let ((spec (bunny::make-connection-spec "amqp://host/")))
@@ -124,7 +124,7 @@
       (is (connection-spec-vhost spec) "")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://host/")))
+      (is (print-amqp-object-to-string spec) "amqp://host/")))
 
   (subtest "amqp://host/%2f"
     (let ((spec (bunny::make-connection-spec "amqp://host/%2f")))
@@ -135,7 +135,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://host")))
+      (is (print-amqp-object-to-string spec) "amqp://host")))
 
   (subtest "amqp://[::1]"
     (let ((spec (bunny::make-connection-spec "amqp://[::1]")))
@@ -146,7 +146,7 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) t "Address is IPv6")
-      (is (actually-print-connection-spec spec) "amqp://[::1]"))))
+      (is (print-amqp-object-to-string spec) "amqp://[::1]"))))
 
 (subtest "Connection list parser tests [without additional params]"
   (subtest "NIL"
@@ -158,6 +158,6 @@
       (is (connection-spec-vhost spec) "/")
       (is (connection-spec-use-tls-p spec) nil "Do not use TLS")
       (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
-      (is (actually-print-connection-spec spec) "amqp://"))))
+      (is (print-amqp-object-to-string spec) "amqp://"))))
 
 (finalize)

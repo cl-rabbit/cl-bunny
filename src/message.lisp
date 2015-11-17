@@ -62,9 +62,9 @@
 (defun message-body-string (message &optional (encoding :utf-8))
   (babel:octets-to-string (message-body message) :encoding encoding))
 
-(defun actually-print-message (message stream)
+(defmethod print-amqp-object ((message message) stream)
   (format stream "consumer-tag=~a delivery-tag=~a" (message-consumer-tag message) (message-delivery-tag message)))
 
 (defmethod print-object ((message message) stream)
   (print-unreadable-object (message stream :type t :identity t)
-    (actually-print-message message stream)))
+    (print-amqp-object message stream)))

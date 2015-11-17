@@ -44,7 +44,7 @@
     ((equal "/" (connection-spec-vhost spec)))
     (t (format stream "/~a" (quri:url-encode (connection-spec-vhost spec))))))
 
-(defun actually-print-connection-spec (spec stream)  
+(defmethod print-amqp-object ((spec connection-spec) stream)
   (render-scheme spec stream)
   (render-userinfo spec stream)
   (render-host spec stream)
@@ -53,7 +53,7 @@
 
 (defmethod print-object ((spec connection-spec) stream)
   (print-unreadable-object (spec stream :type t :identity t)
-    (actually-print-connection-spec spec stream)))
+    (print-amqp-object spec stream)))
 
 (defmethod make-connection-spec ((raw list))
   (error "Not implemented"))
