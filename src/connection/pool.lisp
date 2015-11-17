@@ -54,12 +54,15 @@
 
 (defparameter *connections-pool* (make-instance 'eq-connections-pool))
 
-(defmethod print-object ((object eq-connections-pool) stream)
-  (print-unreadable-object (object stream :type t :identity t)
-    (let ((connections (alexandria:hash-table-values (connections-pool-storage *connections-pool*))))
+(defmethod print-amqp-object ((pool eq-connections-pool) stream)
+  (let ((connections (alexandria:hash-table-values (connections-pool-storage pool))))
       (format stream "Connections: ~a, Open: ~a"
               (length connections)
-              (count-if 'connection-open-p connections)))))
+              (count-if 'connection-open-p connections))))
+
+(defmethod print-object ((object eq-connections-pool) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (print-amqp-object object stream)))
 
 (defun connections-pool.get (spec &key (pool *connections-pool*))
   (connections-pool.get% pool spec))
