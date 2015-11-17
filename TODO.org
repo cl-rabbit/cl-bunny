@@ -15,11 +15,11 @@
   - [ ] Connection parameters support via url query
 - [ ] Connection spec as list
   - [ ] Tests
-- [-] Connections Pool
+- [X] Connections Pool
   - [X] Implementation
   - [X] Tests
   - [X] Printer
-  - [ ] Printer tests
+  - [X] Printer tests
 - [ ] Connection
   - [ ] handle server properties
   - [ ] handle locales
