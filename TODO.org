@@ -12,7 +12,7 @@
   - [X] Parser tests
   - [ ] Query string tests
   - [X] Printer
-  - [ ] Connection parameters supprot via url query
+  - [ ] Connection parameters support via url query
 - [ ] Connection spec as list
   - [ ] Tests
 - [-] Connections Pool
