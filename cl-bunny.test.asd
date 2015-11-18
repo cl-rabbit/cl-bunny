@@ -34,7 +34,8 @@
                  (:module "integration"
                   :serial t
                   :components
-                  ((:test-file "basic")
+                  ((:test-file "errors")
+                   (:test-file "basic")
                    (:test-file "channel")
                    (:test-file "connection")
                    (:test-file "confirm")
