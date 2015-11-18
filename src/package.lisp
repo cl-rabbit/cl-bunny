@@ -28,6 +28,7 @@
            #:connection-closed-error
            #:channel-closed-error
            #:threaded-promise-timeout
+           #:transport-error
 
            ;; high-level interfaces
            #:properties-headers
