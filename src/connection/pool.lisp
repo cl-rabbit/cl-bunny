@@ -33,7 +33,8 @@
     (setf (gethash (connection-pool-tag connection) (connections-pool-storage pool))
           connection
           (connection-pool connection)
-          pool)))
+          pool)
+    connection))
 
 (defmethod connections-pool.remove% ((pool eq-connections-pool) (connection connection))
   (assert (connection-pool connection) nil "Connection pool is nil") ;; TODO: specialize error
