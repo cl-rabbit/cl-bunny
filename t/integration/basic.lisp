@@ -68,6 +68,29 @@
                      (message-body-string message))))
             (publish x "Hello world!" :routing-key "cl-bunny.test.hello-world"))
           (sleep 1)
-          (is string "Hello world!"))))))
+          (is string "Hello world!")))))
+
+  (subtest "Shared connection"
+    (with-connection ("amqp://" :shared t)
+      (let ((queue))
+        (labels ((test-send (message)
+                   (with-channel ()
+                     (let ((x (exchange.default)))
+                       (setf queue (queue.declare :auto-delete t))
+                       (publish x message :routing-key queue))))
+                 (test-recv-sync ()
+                   (let ((string))
+                     (with-channel ()
+                       (with-consumers
+                           ((queue
+                             (lambda (message)
+                               (message-ack message)
+                               (setf string (message-body-string message)))
+                             :type :sync))
+                         (is (consume :one-shot t) "Hello World!" "Sync consumer didn't timed out"))
+                       string))))
+          (test-send "Hello World!")
+          (is (test-recv-sync) "Hello World!")
+          (connection.close))))))
 
 (finalize)
