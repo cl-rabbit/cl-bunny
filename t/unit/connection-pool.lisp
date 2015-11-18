@@ -21,7 +21,7 @@
       (let ((connection1 (connection.new "amqp://localhost"))
             (connection2 (connection.new "amqp://h2"))
             (connection3 (connection.new "amqp://h3")))
-        (connections-pool.add connection1 :pool pool)
+        (is (connections-pool.add connection1 :pool pool) connection1)
         (connections-pool.add connection2 :pool pool)
         (connections-pool.add connection3 :pool pool)
         (is (cl-bunny.test::print-amqp-object-to-string pool) "Connections: 3, Open: 0")
