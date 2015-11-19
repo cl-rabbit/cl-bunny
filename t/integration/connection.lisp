@@ -76,6 +76,11 @@
                                  :arguments (list *channel*))
           (sleep 5)
           (connection.close)))))
-  (ok "Do not block when closing closed connection"))
+  (ok "Do not block when closing closed connection")
+
+  (loop for i from 1 to 10000 do
+           (with-connection ()
+             (with-channel ())))
+  (ok "Resources are properly deallocated, no races"))
 
 (finalize)
