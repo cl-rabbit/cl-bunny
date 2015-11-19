@@ -265,19 +265,20 @@
                          do (wait-for-frame connection)
                          else
                          do (iolib:event-dispatch event-base :one-shot t))))))
-        (setf (slot-value connection 'state) :closing)
-        (eventfd.close control-fd)
-        (log:debug "Stopping AMQP connection")
-        (when (connection-pool connection)
-          (connections-pool.remove connection))
-        (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
-        (log:debug "closed-all-channels")
-        ;; drain control mailbox
-        (loop for lambda = (safe-queue:dequeue control-mailbox)
-              while lambda
-              do (ignore-errors (funcall lambda)))
-        (log:debug "queue drained")
-        (setf (slot-value connection 'state) :closed)
+        (with-write-lock (connection-state-lock connection)
+          (setf (slot-value connection 'state) :closing)
+          (eventfd.close control-fd)
+          (log:debug "Stopping AMQP connection")
+          (when (connection-pool connection)
+            (connections-pool.remove connection))
+          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
+          (log:debug "closed-all-channels")
+          ;; drain control mailbox
+          (loop for lambda = (safe-queue:dequeue control-mailbox)
+                while lambda
+                do (ignore-errors (funcall lambda)))
+          (log:debug "queue drained")
+          (setf (slot-value connection 'state) :closed))
         (cl-rabbit:destroy-connection cl-rabbit-connection)
         (if (functionp ret)
             (funcall ret))))))

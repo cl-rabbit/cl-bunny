@@ -2,10 +2,60 @@
 
 (defparameter *force-timeout* nil)
 
+(defstruct connection-state-lock
+  (rlock (bt:make-lock))
+  (rtrylock (bt:make-lock))
+  (resource (bt:make-lock))
+  (rcount 0 :type (unsigned-byte 32)))
+
+(defun read-lock-begin (connection-state-lock)
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (bt:acquire-lock (rwlock-rtrylock connection-state-lock))
+  (bt:acquire-lock (rwlock-rlock connection-state-lock))
+  (when (= 1 (incf (rwlock-rcount connection-state-lock)))
+    (bt:acquire-lock (rwlock-resource connection-state-lock)))
+  (bt:release-lock (rwlock-rlock connection-state-lock))
+  (bt:release-lock (rwlock-rtrylock connection-state-lock)))
+
+(defun read-lock-end (connection-state-lock)
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (bt:acquire-lock (rwlock-rlock connection-state-lock))
+  (when (= 0 (decf (rwlock-rcount connection-state-lock)))
+    (bt:release-lock (rwlock-resource connection-state-lock)))
+  (bt:release-lock (rwlock-rlock connection-state-lock)))
+
+(defmacro with-read-lock (connection-state-lock &body body)
+  (with-gensyms (rwlock%)
+    `(let ((,rwlock% ,connection-state-lock))
+       (read-lock-begin ,rwlock%)
+       (unwind-protect
+            (progn ,@body)
+         (read-lock-end ,rwlock%)))))
+
+(defun write-lock-begin (connection-state-lock)
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+  (bt:acquire-lock (rwlock-rtrylock connection-state-lock))
+  (bt:acquire-lock (rwlock-resource connection-state-lock)))
+
+(defun write-lock-end (connection-state-lock)
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
+
+  (bt:release-lock (rwlock-resource connection-state-lock))
+  (bt:release-lock (rwlock-rtrylock connection-state-lock)))
+
+(defmacro with-write-lock (connection-state-lock &body body)
+  (with-gensyms (rwlock%)
+    `(let ((,rwlock% ,connection-state-lock))
+       (write-lock-begin ,rwlock%)
+       (unwind-protect
+            (progn ,@body)
+         (write-lock-end ,rwlock%)))))
+
 (defclass threaded-connection (connection)
   ((event-base :initform nil :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
    (control-mailbox :initform (safe-queue:make-queue) :reader connection-control-mailbox)
+   (state-lock :initform (make-connection-state-lock) :reader connection-state-lock)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
    (connection-thread :reader connection-thread)))
 
@@ -23,11 +73,12 @@
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
     (setf execute-in-connection-lambda
           (lambda (thunk)
-            (if (connection-open-p connection)
-                (progn (safe-queue:enqueue thunk control-mailbox)
-                       (log:debug "Notifying connection thread")
-                       (eventfd.notify-1 control-fd))
-                (error 'connection-closed-error :connection connection))))))
+            (with-read-lock (connection-state-lock connection)
+              (if (connection-open-p connection)
+                  (progn (safe-queue:enqueue thunk control-mailbox)
+                         (log:debug "Notifying connection thread")
+                         (eventfd.notify-1 control-fd))
+                  (error 'connection-closed-error :connection connection)))))))
 
 (defgeneric register-channel (connection channel))
 
