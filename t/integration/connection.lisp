@@ -78,7 +78,7 @@
           (connection.close)))))
   (ok "Do not block when closing closed connection")
 
-  (loop for i from 1 to 10000 do
+  (loop for i from 1 to 1000 do  ;; <- actually there should be 10000 but Travis CI can't handle that
            (with-connection ()
              (with-channel ())))
   (ok "Resources are properly deallocated, no races"))
