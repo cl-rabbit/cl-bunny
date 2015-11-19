@@ -231,56 +231,56 @@
 
 (defun connection-loop (connection)
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
-    (iolib:with-event-base (event-base)
-      (iolib:set-io-handler event-base
-                            control-fd
-                            :read (lambda (fd e ex)
-                                    (declare (ignorable fd e ex))
-                                    (eventfd.read control-fd)
-                                    (log:debug "Got lambda to execute on connection thread")
-                                    (loop for lambda = (safe-queue:dequeue control-mailbox)
-                                          while lambda
-                                          do (funcall lambda))))
-      (iolib:set-io-handler event-base
-                            (cl-rabbit::get-sockfd cl-rabbit-connection)
-                            :read (lambda (fd e ex)
-                                    (declare (ignorable fd e ex))
-                                    (wait-for-frame connection)))
-      (let ((ret))
-        (unwind-protect
-             (setf ret
-                   (catch 'stop-connection
-                     (handler-bind ((cl-rabbit:rabbitmq-library-error
-                                      (lambda (e)
-                                        (let ((actual-error (librabbitmq-error->transport-error e)))
-                                          (log:error "Unhandled transport error: ~a" actual-error)
-                                          (throw 'stop-connection actual-error))))
-                                    (error
-                                      (lambda (e)
-                                        (log:error "Unhandled unknown error: ~a" e)
-                                        (throw 'stop-connection e))))
+    (let ((ret))
+      (unwind-protect
+           (setf ret
+                 (catch 'stop-connection
+                   (handler-bind ((cl-rabbit:rabbitmq-library-error
+                                    (lambda (e)
+                                      (let ((actual-error (librabbitmq-error->transport-error e)))
+                                        (log:error "Unhandled transport error: ~a" actual-error)
+                                        (throw 'stop-connection actual-error))))
+                                  (error
+                                    (lambda (e)
+                                      (log:error "Unhandled unknown error: ~a" e)
+                                      (throw 'stop-connection e))))
+                     (iolib:with-event-base (event-base)
+                       (iolib:set-io-handler event-base
+                                             control-fd
+                                             :read (lambda (fd e ex)
+                                                     (declare (ignorable fd e ex))
+                                                     (eventfd.read control-fd)
+                                                     (log:debug "Got lambda to execute on connection thread")
+                                                     (loop for lambda = (safe-queue:dequeue control-mailbox)
+                                                           while lambda
+                                                           do (funcall lambda))))
+                       (iolib:set-io-handler event-base
+                                             (cl-rabbit::get-sockfd cl-rabbit-connection)
+                                             :read (lambda (fd e ex)
+                                                     (declare (ignorable fd e ex))
+                                                     (wait-for-frame connection)))
                        (loop
                          if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
                                 (cl-rabbit::frames-enqueued cl-rabbit-connection))
                          do (wait-for-frame connection)
                          else
-                         do (iolib:event-dispatch event-base :one-shot t)))))
-          (setf (slot-value connection 'state) :closing)
-          (eventfd.close control-fd)
-          (log:debug "Stopping AMQP connection")
-          (when (connection-pool connection)
-            (connections-pool.remove connection))
-          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
-          (log:debug "closed-all-channels")
-          ;; drain control mailbox
-          (loop for lambda = (safe-queue:dequeue control-mailbox)
-                while lambda
-                do (ignore-errors (funcall lambda)))
-          (log:debug "queue drained")
-          (setf (slot-value connection 'state) :closed)
-          (cl-rabbit:destroy-connection cl-rabbit-connection)
-          (if (functionp ret)
-              (funcall ret)))))))
+                         do (iolib:event-dispatch event-base :one-shot t))))))
+        (setf (slot-value connection 'state) :closing)
+        (eventfd.close control-fd)
+        (log:debug "Stopping AMQP connection")
+        (when (connection-pool connection)
+          (connections-pool.remove connection))
+        (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
+        (log:debug "closed-all-channels")
+        ;; drain control mailbox
+        (loop for lambda = (safe-queue:dequeue control-mailbox)
+              while lambda
+              do (ignore-errors (funcall lambda)))
+        (log:debug "queue drained")
+        (setf (slot-value connection 'state) :closed)
+        (cl-rabbit:destroy-connection cl-rabbit-connection)
+        (if (functionp ret)
+            (funcall ret))))))
 
 (defmethod connection.close-ok% ((connection librabbitmq-connection) callback)
   (connection.send connection connection (make-instance 'amqp-method-connection-close-ok))
@@ -522,10 +522,10 @@
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-nack))
   (cl-rabbit:basic-nack (connection-cl-rabbit-connection connection)
-                            (channel-id channel)
-                            (amqp-method-field-delivery-tag method)
-                            :multiple (amqp-method-field-multiple method)
-                            :requeue (amqp-method-field-requeue method)))
+                        (channel-id channel)
+                        (amqp-method-field-delivery-tag method)
+                        :multiple (amqp-method-field-multiple method)
+                        :requeue (amqp-method-field-requeue method)))
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-confirm-select))
   (cl-rabbit:confirm-select (connection-cl-rabbit-connection connection)
