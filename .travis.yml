@@ -15,8 +15,9 @@ services:
   - rabbitmq
     
 before_install:
-  - sudo apt-get install -y libfixposix-dev
-  - sudo apt-get install -y libffi-dev
+  - sudo apt-get update -qq
+  - sudo apt-get install libfixposix-dev
+  - sudo apt-get install libffi-dev
   - sudo apt-get install libssl-dev
 
 install:
