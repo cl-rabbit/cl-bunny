@@ -129,7 +129,7 @@
                          :reply-text reply-text
                          :class-id class-id
                          :method-id method-id)
-        (setf (channel-open-p% channel) nil)
+        (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
         (connection.deregister-channel channel))
     (connection-closed-error () (log:debug "Closing channel on closed connection"))))
 
@@ -142,7 +142,9 @@
                                                         :class-id class-id
                                                         :method-id method-id))))
         (flet ((cb (reply)
-                 (declare (ignorable reply))))
+                 (declare (ignorable reply))
+                 (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
+                 (connection.deregister-channel channel)))
           (if (blackbird:promisep reply)
               (blackbird:attach reply (function cb))
               (cb reply)))))))
