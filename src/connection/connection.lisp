@@ -3,7 +3,7 @@
 (defparameter *force-timeout* nil)
 
 (defclass threaded-connection (connection)
-  ((event-base :initform (make-instance 'iolib:event-base) :reader connection-event-base :initarg :event-base)
+  ((event-base :initform nil :reader connection-event-base :initarg :event-base)
    (control-fd :initform (eventfd:eventfd.new 0))
    (control-mailbox :initform (safe-queue:make-queue) :reader connection-control-mailbox)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
