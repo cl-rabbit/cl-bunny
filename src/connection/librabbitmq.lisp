@@ -496,6 +496,40 @@
                        :global (amqp-method-field-global method))
   (make-instance 'amqp-method-basic-qos-ok))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-get))
+  (let ((state (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
+    (unwind-protect
+         (let ((rpc-reply (cl-rabbit::with-bytes-string (queue-bytes (queue-name (amqp-method-field-queue method)))
+                            (cl-rabbit::amqp-basic-get state (channel-id channel) queue-bytes (if (amqp-method-field-no-ack method) 1 0)))))
+           (cl-rabbit::verify-rpc-reply state (channel-id channel) rpc-reply)
+           (let* ((reply (getf rpc-reply 'cl-rabbit::reply))
+                  (id (getf reply 'cl-rabbit::id))
+                  (decoded (getf reply 'cl-rabbit::decoded)))
+             (ecase id
+               (#.cl-rabbit::+amqp-basic-get-empty-method+
+                (make-instance 'amqp-method-basic-get-empty
+                               :cluster-id (cl-rabbit::bytes->string 
+                                            (cffi:foreign-slot-value decoded '(:struct cl-rabbit::amqp-basic-get-empty-t) 'cl-rabbit::cluster-id))))
+               (#.cl-rabbit::+amqp-basic-get-ok-method+
+                (let ((struct (cffi:convert-from-foreign decoded '(:struct cl-rabbit::amqp-basic-get-ok-t))))                  
+                  (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
+                    (log:debug "Got return method, reading message")
+                    (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
+                    (make-instance 'amqp-method-basic-get-ok
+                                   :delivery-tag (getf struct 'cl-rabbit::delivery-tag)
+                                   :redelivered (getf struct 'cl-rabbit::redelivered)
+                                   :exchange (cl-rabbit::bytes->string (getf struct 'cl-rabbit::exchange))
+                                   :routing-key (cl-rabbit::bytes->string (getf struct 'cl-rabbit::routing-key))
+                                   :message-count (getf struct 'cl-rabbit::message-count)                                 
+                                   :content-properties (apply #'make-instance 'amqp-basic-class-properties
+                                                              (cl-rabbit::load-properties-to-plist
+                                                               (cffi:foreign-slot-value message
+                                                                                        '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties)))
+                                   :content (cl-rabbit::bytes->array
+                                             (cffi:foreign-slot-value message
+                                                                      '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))))))
+      (cl-rabbit::maybe-release-buffers state))))
+
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-consume))
   (multiple-value-bind (consumer-tag)
       (cl-rabbit:basic-consume (connection-cl-rabbit-connection connection)

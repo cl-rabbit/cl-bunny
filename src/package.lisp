@@ -83,6 +83,10 @@
            #:queue.purge
            #:queue.unbind
            #:queue.delete
+           #:queue.get
+           #:queue.state
+           #:queue.message-count
+           #:queue.consumer-count
 
            #:exchange.default
            #:exchange.topic

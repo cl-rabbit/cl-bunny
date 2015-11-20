@@ -88,3 +88,43 @@
                    :routing-key routing-key
                    :arguments arguments)
     queue))
+
+(defun queue.status (queue &key (channel *channel*))
+  (channel.send% channel (make-instance 'amqp-method-queue-declare
+                                        :passive t
+                                        :queue (queue-name queue)
+                                        :durable (queue-durable-p queue)
+                                        :exclusive (queue-exclusive-p queue)
+                                        :auto-delete (queue-auto-delete-p queue)
+                                        :arguments (queue-arguments queue))
+    (values (amqp-method-field-message-count reply)
+            (amqp-method-field-consumer-count reply))))
+
+(defun queue.message-count (queue &key (channel *channel*))
+  (multiple-value-bind (message-count consumer-count)
+      (queue.status queue :channel channel)
+      (declare (ignore consumer-count))
+    message-count))
+
+(defun queue.consumer-count (queue &key (channel *channel*))
+  (multiple-value-bind (message-count consumer-count)
+      (queue.status queue :channel channel)
+      (declare (ignore message-count))
+    consumer-count))
+
+(defun queue.get (&key (queue "") (no-ack nil) (channel *channel*))
+  (channel.send% channel
+      (make-instance 'amqp-method-basic-get
+                     :queue (queue-name queue)
+                     :no-ack no-ack)
+    (if (typep reply 'amqp-method-basic-get-empty)
+        (values nil (amqp-method-field-cluster-id reply))
+        (values (make-instance 'message
+                               :channel channel                       
+                               :body (amqp-method-content reply)
+                               :properties (amqp-method-content-properties reply)
+                               :routing-key (amqp-method-field-routing-key reply)
+                               :exchange (amqp-method-field-exchange reply)
+                               :redelivered (amqp-method-field-redelivered reply)
+                               :delivery-tag (amqp-method-field-delivery-tag reply))
+                (amqp-method-field-message-count reply)))))
