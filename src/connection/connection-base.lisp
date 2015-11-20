@@ -5,7 +5,7 @@
 
 (defparameter *connection-type* 'librabbitmq-connection)
 
-(defconstant +frame-max+ 0)
+(defconstant +frame-max+ 131072)
 
 (defconstant +heartbeat-interval+ 60)
 
