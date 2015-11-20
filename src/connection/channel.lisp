@@ -82,6 +82,8 @@
            (amqp-channel-error (e)
                                (log:debug "~a" e)
                                (channel.close-ok% channel)
+                               (when (channel-on-error-callback% channel)
+                                 (funcall (channel-on-error-callback% channel) e))
                                (promise.reject promise e))
            (amqp-connection-error (e)
                                   (log:debug "~a" e)
