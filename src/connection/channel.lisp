@@ -37,6 +37,7 @@
                        :accessor exchange-on-return-callback)
    (on-error :type function
              :initform nil
+             :initarg :on-error
              :accessor channel-on-error-callback%)))
 
 (defmethod channel-connection ((connection connection))
@@ -48,8 +49,9 @@
 (defmethod channel-open-p (&optional (channel *channel*))
   (channel-open-p% channel))
 
-(defun channel.new (&key (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
-  (let ((channel (make-instance 'channel :connection connection
+(defun channel.new (&key on-error (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
+  (let ((channel (make-instance 'channel :on-error on-error
+                                         :connection connection
                                          :id channel-id)))
     (connection.register-channel channel)
     channel))
@@ -115,8 +117,11 @@
     (setf (channel-open-p% channel) t)
     channel))
 
-(defun channel.new.open (&optional (connection *connection*))
-  (channel.open (channel.new :connection connection)))
+(defun channel.new.open (&key on-error (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
+  ;; TODO: if open fails automatically generated channel-id should be released
+  (channel.open (channel.new :on-error on-error
+                             :connection connection
+                             :channel-id channel-id)))
 
 (defun channel.flow (active &key (channel *channel*))
   (channel.send% channel
@@ -180,21 +185,27 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
                      :content content
                      :content-properties properties)))
 
+(defun parse-with-channel-params-list (params)
+  (if (keywordp (first params))
+      (append (list nil) params)
+      params))
+
 (defun parse-with-channel-params (params)
   (etypecase params
     (string (list params :close t))
     (symbol (list params :close t))
-    (list params)))
+    (list (parse-with-channel-params-list params))))
 
 (defmacro with-channel (params &body body)
-  (destructuring-bind (channel &key close) (parse-with-channel-params params)
+  (destructuring-bind (channel &key close on-error) (parse-with-channel-params params)
     (with-gensyms (allocated-p channel-val close-val)
       `(let ((,channel-val ,channel)
              (,close-val ,close))
          (multiple-value-bind (*channel* ,allocated-p) (if ,channel-val
                                                            ,channel-val
                                                            (values
-                                                            (channel.new.open *connection*)
+                                                            (channel.new.open :connection *connection*
+                                                                              :on-error ,on-error)
                                                             t))
            (unwind-protect
                 (progn
