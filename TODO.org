@@ -21,8 +21,8 @@
   - [X] Tests
   - [X] Printer
   - [X] Printer tests
-- [ ] Connection
-  - [ ] handle server properties
+- [-] Connection
+  - [X] handle server properties
   - [ ] handle locales
   - [ ] handle Connection.Tune
   - [ ] Heartbeats
