@@ -5,6 +5,7 @@
                  :initarg :channel
                  :reader message-channel)
    (consumer-tag :type string
+                 :initform nil
                  :initarg :consumer-tag
                  :reader message-consumer-tag)
    (consumer     :type consumer
@@ -63,7 +64,7 @@
   (babel:octets-to-string (message-body message) :encoding encoding))
 
 (defmethod print-amqp-object ((message message) stream)
-  (format stream "consumer-tag=~a delivery-tag=~a" (message-consumer-tag message) (message-delivery-tag message)))
+  (format stream "~@[consumer-tag=~a ~]delivery-tag=~a" (message-consumer-tag message) (message-delivery-tag message)))
 
 (defmethod print-object ((message message) stream)
   (print-unreadable-object (message stream :type t :identity t)
