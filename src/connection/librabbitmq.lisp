@@ -256,7 +256,7 @@
                                      :amqp-status-timeout))
                             (go exit)))))
          ;;
-         (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 10)))
+         (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
            (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
              (labels ((warn-nonexistent-channel ()
                         (log:warn "Message received for closed channel: ~a" channel-id)))
