@@ -199,6 +199,11 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
     (list (parse-with-channel-params-list params))))
 
 (defmacro with-channel (params &body body)
+  ;; TODO: maybe with-channel should rethrow channel-error?
+  #|
+  (handler-case (with-channel () ..)
+    (channel-error (e) (log:error "Channel closed unexpectedly ~a" e)))
+  |#
   (destructuring-bind (channel &key close on-error) (parse-with-channel-params params)
     (with-gensyms (allocated-p channel-val close-val)
       `(let ((,channel-val ,channel)
