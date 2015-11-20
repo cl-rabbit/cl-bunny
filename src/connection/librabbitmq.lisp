@@ -106,6 +106,7 @@
           (setf (slot-value connection 'control-fd) (eventfd:eventfd.new 0)
                 (slot-value connection 'control-mailbox) (safe-queue:make-queue)
                 (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
+                (slot-value connection 'heartbeat) (connection-heartbeat% connection)
                 (slot-value connection 'state) :open)))
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
