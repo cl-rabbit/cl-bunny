@@ -38,13 +38,19 @@
                :initarg :reply-text
                :reader returned-message-reply-text)))
 
-(defun message.ack (message &key multiple (channel (message-channel message)))
+(defmethod message-delivery-tag ((tag integer))
+  tag)
+
+(defmethod message-channel ((tag integer))
+  nil)
+
+(defun message.ack (message &key multiple (channel (or (message-channel message) *channel*)))
   (channel.send% channel
       (make-instance 'amqp-method-basic-ack
                      :delivery-tag (message-delivery-tag message)
                      :multiple multiple)))
 
-(defun message.nack (message &key multiple requeue (channel (message-channel message)))
+(defun message.nack (message &key multiple requeue (channel (or (message-channel message) *channel*)))
   (channel.send% channel
                  (make-instance 'amqp-method-basic-nack
                    :delivery-tag (message-delivery-tag message)
