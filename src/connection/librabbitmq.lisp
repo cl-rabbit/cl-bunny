@@ -14,6 +14,13 @@
 (defmethod connection-heartbeat% ((connection librabbitmq-connection))
   (cl-rabbit::amqp-get-heartbeat (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
 
+(defmethod connection-server-properties% ((connection librabbitmq-connection))
+  ;; TODO: cache this
+  (cl-rabbit::amqp-table->lisp
+   (cffi:convert-from-foreign
+    (cl-rabbit::amqp-get-server-properties (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection)))
+    '(:struct  cl-rabbit::amqp-table-t))))
+
 (defun librabbitmq-error->transport-error (e)
   (let ((code (cl-rabbit:rabbitmq-library-error/error-code e))
         (description (cl-rabbit:rabbitmq-library-error/error-description e)))
@@ -87,6 +94,9 @@
                                       (connection-spec-vhost spec)
                                       (connection-spec-login spec)
                                       (connection-spec-password spec)
+                                      :heartbeat (slot-value connection 'heartbeat)
+                                      :channel-max +channel-max+
+                                      :frame-max +frame-max+
                                       :properties '(("product" . "cl-bunny(cl-rabbit transport)")
                                                     ("version" . "0.1")
                                                     ("copyright" . "Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and CONTRIBUTORS <https://github.com/cl-rabbit/cl-bunny/blob/master/CONTRIBUTORS.md>")
@@ -95,6 +105,7 @@
 
           (setf (slot-value connection 'control-fd) (eventfd:eventfd.new 0)
                 (slot-value connection 'control-mailbox) (safe-queue:make-queue)
+                (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
                 (slot-value connection 'state) :open)))
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
