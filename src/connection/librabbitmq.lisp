@@ -47,10 +47,15 @@
       (:amqp-status-ssl-connection-failed 'network-error)
       (t e))))
 
-(defun connection.new (&optional (spec "amqp://") &key shared)
+(defun connection.new (&optional (spec "amqp://") &key shared (heartbeat 0))
+  (assert (or (positive-integer-p heartbeat)
+              :default))
   (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
                                                      :pool-tag spec
-                                                     :connection (cl-rabbit:new-connection))))
+                                                     :connection (cl-rabbit:new-connection)
+                                                     :heartbeat (if (eq :default heartbeat)
+                                                                    +heartbeat-interval+
+                                                                    heartbeat))))
     (setup-execute-in-connection-lambda connection)
     connection))
 
@@ -61,13 +66,13 @@
     (list params)))
 
 (defmacro with-connection (params &body body)
-  (destructuring-bind (spec &key shared) (parse-with-connection-params params)
+  (destructuring-bind (spec &key shared (heartbeat 0)) (parse-with-connection-params params)
     (with-gensyms (connection-spec-val shared-val)
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
               (*connection* (if ,shared-val
                                 (connections-pool.find-or-run ,connection-spec-val)
-                                (connection.open (connection.new ,connection-spec-val)))))
+                                (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat)))))
          (unwind-protect
               (progn
                 ,@body)
