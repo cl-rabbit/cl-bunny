@@ -9,6 +9,8 @@
 
 (defconstant +heartbeat-interval+ 60)
 
+(defparameter *debug-connection* nil)
+
 (defclass connection ()
   ((spec :initarg :spec :reader connection-spec)
    (channel-id-allocator :type channel-id-allocator
