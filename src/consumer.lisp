@@ -117,7 +117,8 @@
            (make-instance 'amqp-method-basic-cancel
                           :consumer-tag (consumer-tag consumer)
                           :nowait nowait)
-         (assert (equal (consumer-tag consumer) (amqp-method-field-consumer-tag reply))))
+         (assert (equal (consumer-tag consumer) (amqp-method-field-consumer-tag reply)))
+         (amqp-method-field-consumer-tag reply))
     (remove-consumer (consumer-channel consumer) (consumer-tag consumer))))
 
 (defun channel-consume-message (channel message &key return)
