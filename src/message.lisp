@@ -37,13 +37,13 @@
                :initarg :reply-text
                :reader returned-message-reply-text)))
 
-(defun message-ack (message &key multiple (channel (message-channel message)))
+(defun message.ack (message &key multiple (channel (message-channel message)))
   (channel.send% channel
       (make-instance 'amqp-method-basic-ack
                      :delivery-tag (message-delivery-tag message)
                      :multiple multiple)))
 
-(defun message-nack (message &key multiple requeue (channel (message-channel message)))
+(defun message.nack (message &key multiple requeue (channel (message-channel message)))
   (channel.send% channel
                  (make-instance 'amqp-method-basic-nack
                    :delivery-tag (message-delivery-tag message)

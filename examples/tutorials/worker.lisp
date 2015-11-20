@@ -12,7 +12,7 @@
                        (format t " [x] Received ~a~%" body)
                        ;; imitate some work
                        (sleep (count #\. body))
-                       (message-ack message)
+                       (message.ack message)
                        (print " [x] Done")))
                  :type :sync)
       (consume :one-shot t :timeout nil))))

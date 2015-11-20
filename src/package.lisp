@@ -17,8 +17,8 @@
            #:message-properties
            #:message-body
            #:message-body-string
-           #:message-ack
-           #:message-nack
+           #:message.ack
+           #:message.nack
            #:message-header-value
            #:message-property-value
 

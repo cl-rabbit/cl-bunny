@@ -31,7 +31,7 @@
                  (with-consumers
                      ((queue
                        (lambda (message)
-                         (message-ack message)
+                         (message.ack message)
                          (return-from test-recv-sync (message-body-string message)))
                        :type :sync))
                    (consume :one-shot t)))))
@@ -53,7 +53,7 @@
                  (with-consumers
                      ((queue
                        (lambda (message)
-                         (message-ack message)
+                         (message.ack message)
                          (return-from test-recv-sync (message-body-string message)))
                        :type :sync))
                    (consume :one-shot t :timeout 3)))))

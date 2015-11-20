@@ -22,7 +22,7 @@
                      (with-consumers
                          ((queue
                            (lambda (message)
-                             (message-ack message)
+                             (message.ack message)
                              (assert (equal recv (message-body-string message))))
                            :type :sync))
                        (loop for i from 0 below 1000 do
@@ -52,7 +52,7 @@
                      (with-consumers
                          ((queue
                            (lambda (message)
-                             (message-ack message)
+                             (message.ack message)
                              (assert (equal recv (message-body-string message))))
                            :type :sync))
                        (consume :one-shot t)))

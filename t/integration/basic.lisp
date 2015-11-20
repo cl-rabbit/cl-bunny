@@ -18,7 +18,7 @@
                        (with-consumers
                            ((queue
                              (lambda (message)
-                               (message-ack message)
+                               (message.ack message)
                                (setf string (message-body-string message)))
                              :type :sync))
                          (is (consume :one-shot t) "Hello World!" "Sync consumer didn't timed out"))
@@ -32,7 +32,7 @@
         (with-consumers
             (((queue.declare :auto-delete t)
               (lambda (message)
-                (message-ack message)
+                (message.ack message)
                 (message-body-string message))
               :type :sync))
           (is (consume :one-shot t) nil "Sync consumer timed out")))))
@@ -84,7 +84,7 @@
                        (with-consumers
                            ((queue
                              (lambda (message)
-                               (message-ack message)
+                               (message.ack message)
                                (setf string (message-body-string message)))
                              :type :sync))
                          (is (consume :one-shot t) "Hello World!" "Sync consumer didn't timed out"))

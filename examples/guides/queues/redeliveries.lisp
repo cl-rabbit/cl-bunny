@@ -42,7 +42,7 @@
                        ;; acknowledge some messages, they will be removed from the queue
                        (cond
                          ((> (random 10) 4)
-                          (message-ack message) ;; (message-ack message :multiple nil)
+                          (message.ack message) ;; (message.ack message :multiple nil)
                           (log:info "[consumer1] Got message #~a, redelivered?: ~a, ack-ed"
                                     (header-value (properties-headers (message-properties message)) "i")
                                     (message-redelivered-p message)))
@@ -61,7 +61,7 @@
           (subscribe (lambda (message)
                        ;; do some work
                        (sleep 0.2)
-                       (message-ack message)
+                       (message.ack message)
                        (log:info "[consumer2] Got message #~a, redelivered?: ~a, ack-ed"
                                  (message-header-value message "i")
                                  (message-redelivered-p message)))
