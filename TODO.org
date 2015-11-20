@@ -1,3 +1,4 @@
+- [ ] librabbitmq memory handling
 - [X] Peplace old src/amqp.lisp functions with channel.send
   - [X] amqp-basic-consume%
   - [X] amqp-basic-cancel
