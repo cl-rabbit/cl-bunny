@@ -63,6 +63,7 @@
            #:channel-id
            #:channel-connection
            #:channel-open-p
+           #:channel-on-error-callback
            #:channel.new
            #:channel.open
            #:channel.flow
