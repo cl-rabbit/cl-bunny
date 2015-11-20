@@ -58,6 +58,9 @@
            #:connection-spec-use-tls-p
            #:connection-spec-use-ipv6-p
            #:connection-open-p
+           #:connection-channel-max
+           #:connection-frame-max
+           #:connection-heartbeat
 
            #:*channel*
            #:channel-id
