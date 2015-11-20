@@ -82,6 +82,8 @@
 (defgeneric register-channel (connection channel))
 
 (defmethod register-channel ((connection connection) channel)
+  (unless (channel-id channel)
+    (setf (slot-value channel 'channel-id) (next-channel-id (connection-channel-id-allocator connection))))
   (setf (gethash (channel-id channel) (connection-channels connection)) channel))
 
 (defun connection.register-channel (channel)
