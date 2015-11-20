@@ -61,6 +61,7 @@
            #:connection-channel-max
            #:connection-frame-max
            #:connection-heartbeat
+           #:connection-server-properties
 
            #:*channel*
            #:channel-id
