@@ -40,6 +40,10 @@
                    (:test-file "connection")
                    (:test-file "confirm")
                    (:test-file "tx")
+                   (:module "amqp"
+                    :serial t
+                    :components
+                   ((:test-file "basic-ack")))
                    (:module "exchanges"
                     :serial t
                     :components
