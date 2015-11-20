@@ -51,8 +51,7 @@
 
 (defun channel.new (&key on-error (connection *connection*) (channel-id))
   (assert connection)
-  (assert (or (null channel-id) (and (integerp channel-id)
-                                     (> channel-id 0)
+  (assert (or (null channel-id) (and (positive-integer-p channel-id)
                                      (<= channel-id (connection-channel-max% connection)))))
   (with-read-lock (connection-state-lock connection)
     (if (connection-open-p connection)
