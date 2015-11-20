@@ -49,12 +49,19 @@
 (defmethod channel-open-p (&optional (channel *channel*))
   (channel-open-p% channel))
 
-(defun channel.new (&key on-error (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
-  (let ((channel (make-instance 'channel :on-error on-error
-                                         :connection connection
-                                         :id channel-id)))
-    (connection.register-channel channel)
-    channel))
+(defun channel.new (&key on-error (connection *connection*) (channel-id))
+  (assert connection)
+  (assert (or (null channel-id) (and (integerp channel-id)
+                                     (> channel-id 0)
+                                     (<= channel-id (connection-channel-max% connection)))))
+  (with-read-lock (connection-state-lock connection)
+    (if (connection-open-p connection)
+        (let ((channel (make-instance 'channel :on-error on-error
+                                               :connection connection
+                                               :id channel-id)))
+          (connection.register-channel channel)
+          channel)
+        (error 'connection-closed-error :connection connection))))
 
 (defun channel-on-error-callback (&optional (channel *channel*))
   (channel-on-error-callback% channel))
