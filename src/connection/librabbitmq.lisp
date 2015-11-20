@@ -276,7 +276,8 @@
 (defun connection-loop (connection)
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
     (let ((ret)
-          (last-activity (get-universal-time))) ;; TODO: monotonic time?
+          (last-server-activity (get-universal-time))
+          (last-client-activity (get-universal-time))) ;; TODO: monotonic time?
       (unwind-protect
            (setf ret
                  (catch 'stop-connection
@@ -298,6 +299,8 @@
                                                      (declare (ignorable fd e ex))
                                                      (eventfd.read control-fd)
                                                      (log:debug "Got lambda to execute on connection thread")
+                                                     ;; last-client-acitivity probably should be also updated there
+                                                     ;; but it's not required for lambda to do any networking
                                                      (loop for lambda = (safe-queue:dequeue control-mailbox)
                                                            while lambda
                                                            do (funcall lambda))))
@@ -309,11 +312,14 @@
                                                        (throw 'stop-connection nil))
                                                      ;; something to be read on the socket
                                                      ;;  wait_frame_inner should send heartbeat
-                                                     ;; TODO: what if server quiet for more than 2 heartbeats intervals
                                                      ;; actually last-activity not only shows when last hearbeat
                                                      ;; sent to the server but also when we received something from the
                                                      ;; server last time
-                                                     (setf last-activity (get-universal-time)) ;; TODO: monotonic time?
+                                                     ;; TODO: what if server quiet for more than 2 heartbeats intervals
+                                                     (setf last-server-activity (get-universal-time)) ;; TODO: monotonic time?
+                                                     ;; setting this here because as already said wait_frame_inner will send hearbeat
+                                                     ;; but also it will throw an error if something badly wrong
+                                                     (setf last-client-activity (get-universal-time)) ;; TODO: monotonic time?
                                                      (wait-for-frame connection)))
                        ;; on one hand this isn't needed: wait_frame_inner should send heartbeat anyway
                        ;; however wait_frame_inner only responds
@@ -323,17 +329,18 @@
                                           (lambda ()
                                             (let ((now (get-universal-time)))  ;; TODO: monotonic time?
                                               (cond
-                                                ((> (/ (- now last-activity) (connection-heartbeat% connection))
+                                                ((> (/ (- now last-server-activity) (connection-heartbeat% connection))
                                                     2)
                                                  (throw 'stop-connection 'transport-error))
-                                                ((> now (+ last-activity (connection-heartbeat% connection)))
+                                                ((> now (+ last-client-activity (connection-heartbeat% connection)))
                                                  (log:debug "Sending HEARTBEAT")
                                                  ;; btw send_frame_inner should update send_heartbeat deadline
                                                  (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
                                                    (setf (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel) 0
                                                          (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type) +amqp-frame-heartbeat+)
                                                    (cl-rabbit::verify-status (cl-rabbit::amqp-send-frame (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))
-                                                                                                         frame)))))))
+                                                                                                         frame))
+                                                   (setf last-client-activity (get-universal-time)))))))
                                           (+ 0.4 (/ (connection-heartbeat% connection) 2))))
                        (loop
                          if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
