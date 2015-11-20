@@ -34,7 +34,10 @@
    ;; callbacks
    (on-exchange-return :type function
                        :initform nil
-                       :accessor exchange-on-return-callback)))
+                       :accessor exchange-on-return-callback)
+   (on-error :type function
+             :initform nil
+             :accessor channel-on-error-callback%)))
 
 (defmethod channel-connection ((connection connection))
   connection)
@@ -50,6 +53,12 @@
                                          :id channel-id)))
     (connection.register-channel channel)
     channel))
+
+(defun channel-on-error-callback (&optional (channel *channel*))
+  (channel-on-error-callback% channel))
+
+(defun (setf channel-on-error-callback) (cb &optional (channel *channel*))
+  (setf (channel-on-error-callback% channel) cb))
 
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
@@ -102,7 +111,7 @@
 
 (defun channel.open (&optional (channel *channel*))
   (channel.send% channel
-                 (make-instance 'amqp-method-channel-open)
+      (make-instance 'amqp-method-channel-open)
     (setf (channel-open-p% channel) t)
     channel))
 
@@ -111,15 +120,15 @@
 
 (defun channel.flow (active &key (channel *channel*))
   (channel.send% channel
-                 (make-instance 'amqp-method-channel-flow
-                        :active active)
+      (make-instance 'amqp-method-channel-flow
+                     :active active)
     (assert (eql active (amqp-method-field-active reply)) nil 'error "channel-flow-ok has different active value") ;; TODO: specialize error
     t))
 
 (defun channel.flow-ok (active &key (channel *channel*))
   (channel.send% channel
-                 (make-instance 'amqp-method-channel-flow-ok
-                                :active active)))
+      (make-instance 'amqp-method-channel-flow-ok
+                     :active active)))
 
 (defun channel.close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (handler-case
@@ -151,7 +160,7 @@
 
 (defun channel.close-ok% (channel)
   (channel.send% channel
-                 (make-instance 'amqp-method-channel-close-ok)
+      (make-instance 'amqp-method-channel-close-ok)
     (setf (channel-open-p% channel) nil)
     (connection.deregister-channel channel)))
 
@@ -206,4 +215,13 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 
 (defmethod channel.receive (channel (method amqp-method-channel-close))
   (log:debug "Received channel.close ~a" method)
-  (channel.close-ok% channel))
+  (channel.close-ok% channel)
+  (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
+    (when (and error-type (channel-on-error-callback% channel))
+      (funcall (channel-on-error-callback% channel) (make-condition error-type
+                                                                    :reply-code (amqp-method-field-reply-code method)
+                                                                    :reply-text (amqp-method-field-reply-text method)
+                                                                    :connection (channel-connection channel)
+                                                                    :channel channel
+                                                                    :class-id (amqp-method-field-class-id method)
+                                                                    :method-id (amqp-method-field-method-id method))))))
