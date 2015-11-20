@@ -5,6 +5,15 @@
                          :initarg :connection
                          :reader connection-cl-rabbit-connection)))
 
+(defmethod connection-channel-max% ((connection librabbitmq-connection))
+  (cl-rabbit::amqp-get-channel-max (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
+
+(defmethod connection-frame-max% ((connection librabbitmq-connection))
+  (cl-rabbit::amqp-get-frame-max (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
+
+(defmethod connection-heartbeat% ((connection librabbitmq-connection))
+  (cl-rabbit::amqp-get-heartbeat (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
+
 (defun librabbitmq-error->transport-error (e)
   (let ((code (cl-rabbit:rabbitmq-library-error/error-code e))
         (description (cl-rabbit:rabbitmq-library-error/error-description e)))
