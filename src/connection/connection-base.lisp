@@ -20,7 +20,7 @@
              :reader connection-channels)
    (pool-tag :initarg :pool-tag :accessor connection-pool-tag)
    (pool :initform nil :accessor connection-pool)
-   (heartbeat :initform +heartbeat-interval+ :initarg :heartbeat)
+   (heartbeat :initform 0 :initarg :heartbeat)
    (state :initform :closed :reader connection-state)))
 
 (defgeneric connection-channel-max% (connection))
