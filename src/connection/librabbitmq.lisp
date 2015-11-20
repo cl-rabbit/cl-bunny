@@ -59,11 +59,16 @@
     (setup-execute-in-connection-lambda connection)
     connection))
 
+(defun parse-with-connection-params-list (params)
+  (if (keywordp (first params))
+      (append (list nil) params)
+      params))
+
 (defun parse-with-connection-params (params)
   (etypecase params
     (string (list params :shared nil))
     (symbol (list params :shared nil))
-    (list params)))
+    (list (parse-with-connection-params-list params))))
 
 (defmacro with-connection (params &body body)
   (destructuring-bind (spec &key shared (heartbeat 0)) (parse-with-connection-params params)
