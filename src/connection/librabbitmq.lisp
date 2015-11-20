@@ -234,9 +234,19 @@
                         (lambda (condition)
                           (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
                                     :amqp-status-unexpected-state)
-                            (go unexpected-frame)))))
+                            (go unexpected-frame))
+                          ;; why is that?
+                          ;; when heartbeats enabled wait-for-frame called from event-base loop callback
+                          ;; when server heartbeat arrives (i.e. socket available for reading)
+                          ;; and consume-message/wait_frame_inner? returns AMQP-STATUS-TIMEOUT
+                          ;; also, this happens no matter what supplied as :timout to consume-message
+                          (when (and
+                                 (not (= 0 (connection-heartbeat connection)))
+                                 (eq (cl-rabbit::rabbitmq-library-error/error-code condition)
+                                     :amqp-status-timeout))
+                            (go exit)))))
          ;;
-         (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
+         (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 10)))
            (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
              (labels ((warn-nonexistent-channel ()
                         (log:warn "Message received for closed channel: ~a" channel-id)))
@@ -255,7 +265,8 @@
 
 (defun connection-loop (connection)
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
-    (let ((ret))
+    (let ((ret)
+          (last-activity (get-universal-time))) ;; TODO: monotonic time?
       (unwind-protect
            (setf ret
                  (catch 'stop-connection
@@ -263,11 +274,13 @@
                                     (lambda (e)
                                       (let ((actual-error (librabbitmq-error->transport-error e)))
                                         (log:error "Unhandled transport error: ~a" actual-error)
-                                        (throw 'stop-connection actual-error))))
+                                        (if *debug-connection*
+                                            (throw 'stop-connection actual-error)))))
                                   (error
                                     (lambda (e)
                                       (log:error "Unhandled unknown error: ~a" e)
-                                      (throw 'stop-connection e))))
+                                      (unless *debug-connection*
+                                        (throw 'stop-connection e)))))
                      (iolib:with-event-base (event-base)
                        (iolib:set-io-handler event-base
                                              control-fd
@@ -282,7 +295,36 @@
                                              (cl-rabbit::get-sockfd cl-rabbit-connection)
                                              :read (lambda (fd e ex)
                                                      (declare (ignorable fd e ex))
+                                                     (when ex
+                                                       (throw 'stop-connection nil))
+                                                     ;; something to be read on the socket
+                                                     ;;  wait_frame_inner should send heartbeat
+                                                     ;; TODO: what if server quiet for more than 2 heartbeats intervals
+                                                     ;; actually last-activity not only shows when last hearbeat
+                                                     ;; sent to the server but also when we received something from the
+                                                     ;; server last time
+                                                     (setf last-activity (get-universal-time)) ;; TODO: monotonic time?
                                                      (wait-for-frame connection)))
+                       ;; on one hand this isn't needed: wait_frame_inner should send heartbeat anyway
+                       ;; however wait_frame_inner only responds
+                       ;; what if server gone?
+                       (unless (= 0 (connection-heartbeat connection))
+                         (iolib:add-timer event-base
+                                          (lambda ()
+                                            (let ((now (get-universal-time)))  ;; TODO: monotonic time?
+                                              (cond
+                                                ((> (/ (- now last-activity) (connection-heartbeat% connection))
+                                                    2)
+                                                 (throw 'stop-connection 'transport-error))
+                                                ((> now (+ last-activity (connection-heartbeat% connection)))
+                                                 (log:debug "Sending HEARTBEAT")
+                                                 ;; btw send_frame_inner should update send_heartbeat deadline
+                                                 (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
+                                                   (setf (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel) 0
+                                                         (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type) +amqp-frame-heartbeat+)
+                                                   (cl-rabbit::verify-status (cl-rabbit::amqp-send-frame (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))
+                                                                                                         frame)))))))
+                                          (+ 0.4 (/ (connection-heartbeat% connection) 2))))
                        (loop
                          if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
                                 (cl-rabbit::frames-enqueued cl-rabbit-connection))
@@ -529,10 +571,10 @@
              (ecase id
                (#.cl-rabbit::+amqp-basic-get-empty-method+
                 (make-instance 'amqp-method-basic-get-empty
-                               :cluster-id (cl-rabbit::bytes->string 
+                               :cluster-id (cl-rabbit::bytes->string
                                             (cffi:foreign-slot-value decoded '(:struct cl-rabbit::amqp-basic-get-empty-t) 'cl-rabbit::cluster-id))))
                (#.cl-rabbit::+amqp-basic-get-ok-method+
-                (let ((struct (cffi:convert-from-foreign decoded '(:struct cl-rabbit::amqp-basic-get-ok-t))))                  
+                (let ((struct (cffi:convert-from-foreign decoded '(:struct cl-rabbit::amqp-basic-get-ok-t))))
                   (cffi:with-foreign-objects ((message '(:struct cl-rabbit::amqp-message-t)))
                     (log:debug "Got return method, reading message")
                     (cl-rabbit::verify-rpc-reply state (channel-id channel) (cl-rabbit::amqp-read-message state (channel-id channel) message 0))
@@ -541,7 +583,7 @@
                                    :redelivered (getf struct 'cl-rabbit::redelivered)
                                    :exchange (cl-rabbit::bytes->string (getf struct 'cl-rabbit::exchange))
                                    :routing-key (cl-rabbit::bytes->string (getf struct 'cl-rabbit::routing-key))
-                                   :message-count (getf struct 'cl-rabbit::message-count)                                 
+                                   :message-count (getf struct 'cl-rabbit::message-count)
                                    :content-properties (apply #'make-instance 'amqp-basic-class-properties
                                                               (cl-rabbit::load-properties-to-plist
                                                                (cffi:foreign-slot-value message
