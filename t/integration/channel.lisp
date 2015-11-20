@@ -3,11 +3,13 @@
 (plan 5)
 
 (subtest "Channel tests"
+  (is-error (channel.new :connection (connection.new)) 'connection-closed-error "Can't create channel for closed connection")
+
   (subtest "New channel should be closed and registered"
-    (let* ((*connection* (connection.new))
-           (*channel* (channel.new)))
-      (is (gethash (channel-id *channel*) (bunny::connection-channels *connection*)) *channel*)
-      (is (channel-open-p) nil "Newly created channel is closed")))
+    (with-connection ()
+      (let ((channel (channel.new)))
+        (is (gethash (channel-id channel) (bunny::connection-channels *connection*)) channel)
+        (is (channel-open-p channel) nil "Newly created channel is closed"))))
 
   (with-connection ()
     (with-channel ()
