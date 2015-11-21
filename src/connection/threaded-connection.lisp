@@ -58,15 +58,11 @@
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
    (connection-thread :reader connection-thread)))
 
-(defun connection-open-p (connection)
+(defmethod connection-open-p% ((connection threaded-connection))
   (and connection
        (slot-boundp connection 'connection-thread)
        (bt:thread-alive-p (connection-thread connection))
        (eq (connection-state connection) :open)))
-
-(defun check-connection-alive (connection)
-  (when (connection-open-p connection)
-    connection))
 
 (defun setup-execute-in-connection-lambda (connection)
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
@@ -78,33 +74,6 @@
                          (log:debug "Notifying connection thread")
                          (eventfd.notify-1 control-fd))
                   (error 'connection-closed-error :connection connection)))))))
-
-(defgeneric register-channel (connection channel))
-
-(defmethod register-channel ((connection connection) channel)
-  (unless (channel-id channel)
-    (setf (slot-value channel 'channel-id) (next-channel-id (connection-channel-id-allocator connection))))
-  (setf (gethash (channel-id channel) (connection-channels connection)) channel))
-
-(defun connection.register-channel (channel)
-  (register-channel (channel-connection channel) channel))
-
-(defgeneric deregister-channel (connection channel))
-
-(defmethod deregister-channel ((connection connection) channel)
-  (remhash (channel-id channel) (connection-channels connection))
-  (release-channel-id (connection-channel-id-allocator connection) (channel-id channel)))
-
-(defun connection.deregister-channel (channel)
-  (deregister-channel (channel-connection channel) channel))
-
-(defgeneric get-channel (connection channel-id))
-
-(defmethod get-channel ((connection connection) channel-id)
-  (gethash channel-id (connection-channels connection)))
-
-(defun connection.get-channel (channel-id &key (connection *connection*))
-  (get-channel connection channel-id))
 
 (defmacro execute-in-connection-thread ((&optional (connection '*connection*)) &body body)
   `(funcall (connection-lambda ,connection)
@@ -138,7 +107,7 @@
                  (values-list ,return)))
            (error 'connection-closed-error :connection ,connection%)))))
 
-(defun connection.close (&key (connection *connection*) (timeout *force-timeout*))
+(defmethod connection.close% ((connection threaded-connection) timeout)
   (if (eq (bt:current-thread) (connection-thread connection))
       (throw 'stop-connection (values))
       (if (bt:thread-alive-p (connection-thread connection))
@@ -155,17 +124,3 @@
                            (t (log:error "Connection state is unknown"))))))
             (connection-closed-error () (log:debug "Closing already closed connection")))
           t)))
-
-(defgeneric connection.send (connection channel method))
-
-(defgeneric connection.receive (connection method))
-
-(defmethod connection.receive ((connection connection) (method amqp-method-connection-close))
-  (log:debug "Received connection.closed ~a" method)
-  (connection.close-ok% connection nil))
-
-(defmethod connection.receive ((connection connection) (method amqp-method-connection-blocked))
-  (log:error "Connection blocked ~a" method))
-
-(defmethod connection.receive ((connection connection) (method amqp-method-connection-unblocked))
-  (log:error "Connection unblocked ~a" method))

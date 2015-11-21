@@ -47,15 +47,10 @@
       (:amqp-status-ssl-connection-failed 'network-error)
       (t e))))
 
-(defun connection.new (&optional (spec "amqp://") &key shared (heartbeat 0))
-  (assert (or (positive-integer-p heartbeat)
-              :default))
+(defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec  shared heartbeat)
   (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
                                                      :pool-tag spec
-                                                     :connection (cl-rabbit:new-connection)
-                                                     :heartbeat (if (eq :default heartbeat)
-                                                                    +heartbeat-interval+
-                                                                    heartbeat))))
+                                                     :heartbeat heartbeat)))
     (setup-execute-in-connection-lambda connection)
     connection))
 
@@ -84,7 +79,7 @@
            (when (and (not ,shared-val))
              (connection.close)))))))
 
-(defun connection.open (&optional (connection *connection*))
+(defmethod connection.open% ((connection librabbitmq-connection))
   (connection-init connection)
   (setf (slot-value connection 'connection-thread)
         (bt:make-thread (lambda () (connection-loop connection))
@@ -95,6 +90,7 @@
 (defun connection-init (connection)
   (handler-case
       (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
+        (setf cl-rabbit-connection (cl-rabbit:new-connection))
         (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
         (handler-bind ((cl-rabbit::rabbitmq-server-error
                          (lambda (error)
