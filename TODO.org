@@ -30,6 +30,9 @@
     - [ ] tests
 - [ ] Channel id allocator
   - [ ] Tests
+- [ ] SSL/TLS
+ - [ ] Support
+ - [ ] Tests
 - [-] Print-objects for
   - [X] connection spec
   - [ ] connection
