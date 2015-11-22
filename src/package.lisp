@@ -83,7 +83,15 @@
 
            #:exchange-on-return-callback
 
+           #:queue-name
+           #:queue-server-named-p
+           #:queue-durable-p
+           #:queue-exclusive-p
+           #:queue-auto-delete-p
+           #:queue-arguments
+           #:queue.exists-p
            #:queue.declare
+           #:queue.declare-temp
            #:queue.bind
            #:queue.purge
            #:queue.unbind
