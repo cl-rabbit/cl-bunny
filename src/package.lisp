@@ -96,6 +96,8 @@
            #:queue.purge
            #:queue.unbind
            #:queue.delete
+           #:queue.put
+           #:queue.peek
            #:queue.get
            #:queue.state
            #:queue.message-count

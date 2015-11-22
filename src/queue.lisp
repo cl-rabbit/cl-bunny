@@ -132,6 +132,20 @@
       (declare (ignore message-count))
     consumer-count))
 
+(defun queue.put (queue content &key (mandatory nil) (immediate nil) (channel *channel*) (properties (make-instance 'amqp-basic-class-properties)) (nowait))
+  (publish "" content :routing-key queue
+                      :mandatory mandatory
+                      :immediate immediate
+                      :properties properties
+                      :nowait nowait
+                      :channel channel))
+
+(defun queue.peek (queue)
+  (with-channel ()
+    (let ((message (queue.get :queue queue)))
+      (message.nack message :requeue t)
+      message)))
+
 (defun queue.get (&key (queue "") (no-ack nil) (channel *channel*))
   (channel.send% channel
       (make-instance 'amqp-method-basic-get
