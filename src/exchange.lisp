@@ -34,6 +34,12 @@
 (defmethod exchange-channel ((exchange string))
   nil)
 
+(defun exchange.exists-p (name)
+  (ignore-some-conditions (amqp-error-not-found)
+    (with-channel ()
+      (exchange.declare name
+                        :passive t))))
+
 (defun exchange.default (&optional (channel *channel*))
   (or
    (get-registered-exchange channel "")

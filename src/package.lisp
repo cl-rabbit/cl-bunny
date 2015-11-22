@@ -101,6 +101,7 @@
            #:queue.message-count
            #:queue.consumer-count
 
+           #:exchange.exists-p
            #:exchange.default
            #:exchange.topic
            #:exchange.fanout
