@@ -38,6 +38,7 @@
                    (:test-file "basic")
                    (:test-file "channel")
                    (:test-file "connection")
+                   (:test-file "queue")
                    (:test-file "confirm")
                    (:test-file "tx")
                    (:module "amqp"
