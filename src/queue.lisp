@@ -4,6 +4,9 @@
   ((name :type string
          :initarg :name
          :reader queue-name)
+   (server-named :type boolean
+                 :initarg :server-named
+                 :reader queue-server-named-p)
    (durable :initarg :durable
             :reader queue-durable-p)
    (exclusive :initarg :exclusive
@@ -31,7 +34,13 @@
 (defmethod reply-to ((queue queue))
   (queue-name queue))
 
-(defun queue.declare (&key (name "") (passive) (durable) (exclusive nil exclusive-supplied-p) (auto-delete nil auto-delete-supplied-p) (nowait) (arguments nil) (channel *channel*))
+(defun queue.exists-p (name)
+  (ignore-some-conditions (amqp-error-not-found)
+    (with-channel ()
+      (queue.declare :name name
+                     :passive t))))
+
+(defun queue.declare (&key (name "") (passive) (durable) (exclusive nil) (auto-delete nil) (nowait) (arguments nil) (channel *channel*))
   ;; (when (and (equal name "")
   ;;            (or exclusive (not exclusive-supplied-p))
   ;;            (or auto-delete (not auto-delete-supplied-p)))
@@ -48,12 +57,23 @@
                                         :nowait nowait
                                         :arguments arguments)
     (values (make-instance 'queue :name (amqp-method-field-queue reply)
+                                  :server-named (equal name "")
                                   :durable durable
                                   :exclusive exclusive
                                   :auto-delete auto-delete
                                   :arguments arguments)
             (amqp-method-field-message-count reply)
             (amqp-method-field-consumer-count reply))))
+
+(defun queue.declare-temp (&key (auto-delete nil) (nowait) (arguments nil) (channel *channel*))
+  (queue.declare :name ""
+                 :passive nil
+                 :durable nil
+                 :exclusive t
+                 :auto-delete auto-delete
+                 :nowait nowait
+                 :arguments arguments
+                 :channel channel))
 
 (defun queue.bind (queue exchange &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
   (channel.send% channel
