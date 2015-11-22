@@ -17,7 +17,7 @@
    (auto-delete :initarg :auto-delete
                 :reader exchange-auto-delete-p)
    (internal :initarg :internal
-                :reader exchange-internal-p)
+             :reader exchange-internal-p)
    (arguments :initarg :arguments
               :reader exchange-arguments)
    (on-return :type function
