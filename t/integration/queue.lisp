@@ -23,7 +23,7 @@
   (with-connection ()
     (is (queue.exists-p "qweewrweqerggrewgre") nil "Queue `qweewrweqerggrewgre` doesn't exist")
     (with-channel ()
-      (ok (bunny:queue.declare :name "qwe" :exclusive t) "Queue `qweewrweqerggrewgre` successfully declared"))
-    (is (queue.exists-p "qweewrweqerggrewgre") nil "Queue `qweewrweqerggrewgre` exists")))
+      (ok (queue.declare :name "qweewrweqerggrewgre" :exclusive t) "Queue `qweewrweqerggrewgre` successfully declared"))
+    (ok (queue.exists-p "qweewrweqerggrewgre") "Queue `qweewrweqerggrewgre` exists")))
 
 (finalize)
