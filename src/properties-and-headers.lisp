@@ -1,7 +1,7 @@
 (in-package :cl-bunny)
 
 (defun properties-headers (properties)
-  (assoc-value properties :headers))
+  (amqp-property-headers properties))
 
 
 (defun header-value (headers name)
