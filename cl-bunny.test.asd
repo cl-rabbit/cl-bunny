@@ -45,6 +45,7 @@
                     :components
                     ((:test-file "basic.ack")
                      (:test-file "queue.purge")
+                     (:test-file "queue.unbind")
                      (:test-file "confirm")
                      (:test-file "tx")))
                    (:module "exchanges"
