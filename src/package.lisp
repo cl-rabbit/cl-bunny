@@ -119,4 +119,6 @@
            #:consume
            #:subscribe
            #:subscribe-sync
-           #:qos))
+           #:qos
+
+           #:->))
