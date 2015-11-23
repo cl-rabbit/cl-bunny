@@ -40,13 +40,6 @@
       (exchange.declare name
                         :passive t))))
 
-(defun exchange.default (&optional (channel *channel*))
-  (or
-   (get-registered-exchange channel "")
-   (register-exchange channel (make-instance 'exchange :name ""
-                                                       :durable t
-                                                       :channel channel))))
-
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
   (channel.send% channel
       (make-instance 'amqp-method-exchange-declare
@@ -68,29 +61,49 @@
                                                   :internal internal
                                                   :arguments arguments)))))
 
-(defun exchange.topic (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+(defun exchange.default (&optional (channel *channel*))
+  (or
+   (get-registered-exchange channel "")
+   (register-exchange channel (make-instance 'exchange :name ""
+                                                       :durable t
+                                                       :channel channel))))
+
+(defun exchange.topic (&optional exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
-         exchange
+         (or exchange "amq.topic")
          (append (list :type "topic")
-                 args)))
+                 (if exchange
+                     args
+                     (list :durable t)))))
 
-(defun exchange.fanout (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+(defun exchange.fanout (&optional exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
-         exchange
+         (or exchange "amq.fanout")
          (append (list :type "fanout")
-                 args)))
+                 (if exchange
+                     args
+                     (list :durable t)))))
 
-(defun exchange.direct (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+(defun exchange.direct (&optional exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
-         exchange
+         (or exchange "amq.direct")
          (append (list :type "direct")
-                 args)))
+                 (if exchange
+                     args
+                     (list :durable t)))))
 
-(defun exchange.headers (exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
+(defun exchange.headers (&optional exchange &rest args &key passive durable auto-delete internal arguments (channel *channel*))
   (apply #'exchange.declare
-         exchange
+         (or exchange "amq.headers")
          (append (list :type "headers")
-                 args)))
+                 (if exchange
+                     args
+                     (list :durable t)))))
+
+(defun exchange.match ()
+  (exchange.declare "amq.match"
+                    :type "headers"
+                    :durable t))
 
 (defun exchange.delete (exchange &key (if-unused nil) (nowait nil) (channel *channel*))
   ;; TODO: deregister exchange

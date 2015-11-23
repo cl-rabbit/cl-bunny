@@ -109,6 +109,7 @@
            #:exchange.fanout
            #:exchange.direct
            #:exchange.headers
+           #:exchange.match
            #:exchange.declare
            #:exchange.delete
            #:exchange.bind
