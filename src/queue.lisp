@@ -140,13 +140,13 @@
                       :nowait nowait
                       :channel channel))
 
-(defun queue.peek (queue)
+(defun queue.peek (&optional (queue ""))
   (with-channel ()
-    (let ((message (queue.get :queue queue)))
+    (let ((message (queue.get queue)))
       (message.nack message :requeue t)
       message)))
 
-(defun queue.get (&key (queue "") (no-ack nil) (channel *channel*))
+(defun queue.get (&optional (queue "") &key (no-ack nil) (channel *channel*))
   (channel.send% channel
       (make-instance 'amqp-method-basic-get
                      :queue (queue-name queue)

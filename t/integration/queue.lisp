@@ -32,6 +32,6 @@
         (let ((q (queue.declare-temp)))
           (queue.put q "qwe")
           (ok (queue.peek q))
-          (ok (queue.get :no-ack t)))))))
+          (ok (queue.get q :no-ack t)))))))
 
 (finalize)
