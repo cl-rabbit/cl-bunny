@@ -1,4 +1,4 @@
-(in-package :cl-bunny.examples)
+(in-package :cl-bunny)
 
 
 ;; http://christophe.rhodes.io/notes/blog/posts/2014/code_walking_for_pipe_sequencing/
