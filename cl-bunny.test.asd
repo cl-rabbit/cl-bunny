@@ -40,12 +40,12 @@
                    (:test-file "connection")
                    (:test-file "exchange")
                    (:test-file "queue")
-                   (:test-file "confirm")
                    (:module "amqp"
                     :serial t
                     :components
                     ((:test-file "basic.ack")
                      (:test-file "queue.purge")
+                     (:test-file "confirm")
                      (:test-file "tx")))
                    (:module "exchanges"
                     :serial t
