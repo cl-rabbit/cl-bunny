@@ -15,7 +15,6 @@
                "log4cl")
   :serial t
   :components ((:file "examples/package")
-               (:file "examples/pipe")
                (:file "examples/guides/getting-started/weathr")
                (:file "examples/guides/getting-started/blabbr")
                (:file "examples/guides/getting-started/hello-world")
