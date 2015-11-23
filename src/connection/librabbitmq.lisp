@@ -281,7 +281,7 @@
                                     (lambda (e)
                                       (let ((actual-error (librabbitmq-error->transport-error e)))
                                         (log:error "Unhandled transport error: ~a" actual-error)
-                                        (if *debug-connection*
+                                        (unless *debug-connection*
                                             (throw 'stop-connection actual-error)))))
                                   (error
                                     (lambda (e)
