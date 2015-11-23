@@ -29,7 +29,8 @@
                  (:module "support"
                   :serial t
                   :components
-                  ((:file "int-allocator")
+                  ((:file "pipe")
+                   (:file "int-allocator")
                    (:file "channel-id-allocator")
                    (:file "threaded-promise")))
                  (:file "conditions")
