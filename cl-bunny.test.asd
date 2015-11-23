@@ -45,7 +45,8 @@
                    (:module "amqp"
                     :serial t
                     :components
-                    ((:test-file "basic.ack")))
+                    ((:test-file "basic.ack")
+                     (:test-file "queue.purge")))
                    (:module "exchanges"
                     :serial t
                     :components
