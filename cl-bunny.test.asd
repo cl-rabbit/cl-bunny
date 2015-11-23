@@ -40,6 +40,7 @@
                    (:test-file "connection")
                    (:test-file "exchange")
                    (:test-file "queue")
+                   (:test-file "dead-lettering")
                    (:module "amqp"
                     :serial t
                     :components
