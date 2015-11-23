@@ -553,6 +553,15 @@
     (make-instance 'amqp-method-queue-delete-ok
                    :message-count message-count)))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-unbind)) 
+  (cl-rabbit:queue-unbind (connection-cl-rabbit-connection connection)
+                          (channel-id channel)
+                          :queue (amqp-method-field-queue method)
+                          :exchange (amqp-method-field-exchange method)
+                          :routing-key (amqp-method-field-routing-key method)
+                          :arguments (amqp-method-field-arguments method))
+  (make-instance 'amqp-method-queue-unbind-ok))
+
 
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-publish))
   (cl-rabbit:basic-publish (connection-cl-rabbit-connection connection)
