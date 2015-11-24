@@ -117,8 +117,8 @@
 (defun exchange.bind (destination source &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
   (channel.send% channel
       (make-instance 'amqp-method-exchange-bind
-                     :destination destination
-                     :source source
+                     :destination (exchange-name destination)
+                     :source (exchange-name source)
                      :routing-key routing-key
                      :nowait nowait
                      :arguments arguments)
