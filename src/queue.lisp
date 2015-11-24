@@ -91,7 +91,7 @@
                                         :nowait nowait)
     queue))
 
-(defun queue.delete (queue &key (if-unused) (if-empty) (nowait) (channel *channel*))
+(defun queue.delete (&optional queue &key (if-unused) (if-empty) (nowait) (channel *channel*))
   (channel.send% channel
                  (make-instance 'amqp-method-queue-delete
                                 :queue (queue-name queue)
