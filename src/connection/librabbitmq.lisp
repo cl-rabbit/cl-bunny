@@ -157,7 +157,7 @@
                                      '(:struct cl-rabbit::amqp-channel-close-t))))
     (channel.receive channel
                      (make-instance 'amqp-method-channel-close :reply-code (getf channel-close 'cl-rabbit::reply-code)
-                                                               :reply-text (getf channel-close 'cl-rabbit::reply-text)
+                                                               :reply-text (cl-rabbit::bytes->string (getf channel-close 'cl-rabbit::reply-text))
                                                                :class-id (getf channel-close 'cl-rabbit::class-id)
                                                                :method-id (getf channel-close 'cl-rabbit::method-id)))))
 
