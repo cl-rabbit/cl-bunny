@@ -45,6 +45,7 @@
                     :serial t
                     :components
                     ((:test-file "basic.ack")
+                     (:test-file "basic.return")
                      (:test-file "queue.purge")
                      (:test-file "queue.unbind")
                      (:test-file "confirm")
