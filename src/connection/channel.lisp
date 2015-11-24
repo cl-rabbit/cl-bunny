@@ -238,7 +238,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 (defgeneric channel.receive (channel method))
 
 (defmethod channel.receive (channel (method amqp-method-channel-close))
-  (log:debug "Received channel.close ~a" method)
+  (log:debug "Received channel.close ~a" (amqp-method-field-reply-text method))
   (channel.close-ok% channel)
   (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
     (when (and error-type (channel-on-error-callback% channel))
