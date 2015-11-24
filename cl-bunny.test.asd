@@ -47,6 +47,7 @@
                     ((:test-file "basic.ack")
                      (:test-file "basic.return")
                      (:test-file "exchange.bind")
+                     (:test-file "exchange.unbind")
                      (:test-file "queue.delete")
                      (:test-file "queue.purge")
                      (:test-file "queue.unbind")
