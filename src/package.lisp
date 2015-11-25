@@ -32,7 +32,21 @@
            #:network-error
 
            ;; high-level interfaces
-           #:properties-headers
+           #:message-content-type
+           #:message-content-encoding
+           #:message-headers
+           #:message-persistent-p
+           #:message-priority
+           #:message-correlation-id
+           #:message-reply-to
+           #:message-expiration
+           #:message-message-id
+           #:message-timestamp
+           #:message-type
+           #:message-user-id
+           #:message-app-id
+           #:message-cluster-id
+           #:message-header-value
            #:header-value
 
            ;; connections pool

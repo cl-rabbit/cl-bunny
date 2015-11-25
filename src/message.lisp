@@ -57,15 +57,6 @@
                    :multiple multiple
                    :requeue requeue)))
 
-(defun message-header-value (message name)
-  (header-value
-   (properties-headers
-    (message-properties message))
-   name))
-
-(defun message-property-value (message name)
-  (assoc-value (message-properties message) name))
-
 (defun message-body-string (message &optional (encoding :utf-8))
   (babel:octets-to-string (message-body message) :encoding encoding))
 
