@@ -96,4 +96,4 @@
             (is (message-app-id message) "cl-bunny.tests")
             (is (message-priority message) 8)))))))
 
-(finalize 1)
+(finalize)
