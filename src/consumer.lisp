@@ -19,7 +19,10 @@
         :reader consumer-tag)
    (lambda :type function
       :initarg :lambda
-      :reader consumer-lambda)))
+      :reader consumer-lambda)
+   (on-cancel :type function
+              :initarg :on-cancel
+              :reader consumer-on-cancel)))
 
 (defmacro with-consumers ((&rest consumers) &body body)
   (assert consumers)
@@ -38,20 +41,24 @@
              (loop for consumer in ,new-consumers do
                       (unsubscribe consumer))))))))
 
-(defun add-consumer (channel queue tag type lambda)
+(defun add-consumer (channel queue tag type lambda on-cancel)
   (assert (null (gethash tag (channel-consumers channel))) (tag) 'channel-consumer-already-added channel tag)
   (let ((consumer (make-instance 'consumer :channel channel
                                            :queue queue
                                            :type type
                                            :tag tag
-                                           :lambda lambda)))
+                                           :lambda lambda
+                                           :on-cancel on-cancel)))
     (setf (gethash tag (channel-consumers channel)) consumer)))
 
 (defun remove-consumer (channel consumer-tag)
   (remhash consumer-tag (channel-consumers channel)))
 
+(defun find-consumer (channel consumer-tag)
+  (gethash consumer-tag (channel-consumers channel)))
+
 (defun find-message-consumer (channel message)
-  (gethash (message-consumer-tag message) (channel-consumers channel)))
+  (find-consumer channel (message-consumer-tag message)))
 
 (defun execute-consumer (consumer message)
   (setf (slot-value message 'consumer) consumer)
@@ -68,6 +75,17 @@
       (unless *ignore-unknown-consumer-tags*
         (error 'unknown-consumer-error :message message)))))
 
+(defun dispatch-consumer-cancel (channel basic-cancel)
+  (if-let ((consumer (find-consumer channel (amqp-method-field-consumer-tag basic-cancel))))
+    (progn
+      (remove-consumer channel consumer)
+      (when (consumer-on-cancel consumer)
+        (funcall (consumer-on-cancel consumer) consumer)))
+    (progn
+      (log:error "Unknown consumer tag ~a." (amqp-method-field-consumer-tag basic-cancel))
+      (unless *ignore-unknown-consumer-tags*
+        (error 'unknown-consumer-error :message basic-cancel)))))
+
 (defun consume (&key (channel *channel*) (timeout +consume-receive-timeout+) one-shot)
   ;; what if with-consumers used many channels?
   ;; maybe replace it with flet?
@@ -76,7 +94,9 @@
       (multiple-value-bind (message ok)
           (safe-queue:mailbox-receive-message mailbox :timeout timeout)
         (when message
-          (setf message (dispatch-consumed-message channel message)))
+          (etypecase message
+            (message (setf message (dispatch-consumed-message channel message)))
+            (amqp-method-basic-cancel (dispatch-consumer-cancel channel message))))
         (when one-shot
           (return (values message ok)))))))
 
@@ -86,7 +106,12 @@
     (let ((*channel* channel))
       (funcall fn message))))
 
-(defun subscribe (queue fn  &key (type :async) consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
+(defun wrap-async-on-cancel-with-channel (on-cancel channel)
+  (lambda (consumer)
+    (let ((*channel* channel))
+      (funcall on-cancel consumer))))
+
+(defun subscribe (queue fn  &key (type :async) on-cancel consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
   (execute-in-connection-thread-sync ((channel-connection channel))
     (let ((reply (channel.send channel (make-instance 'amqp-method-basic-consume
                                                       :queue (queue-name queue)
@@ -100,10 +125,15 @@
                     (amqp-method-field-consumer-tag reply) type
                     (if (eq type :async)
                         (wrap-async-subscribe-with-channel fn channel)
-                        fn)))))
+                        fn)
+                    (when on-cancel
+                      (if (eq type :async)
+                          (wrap-async-on-cancel-with-channel on-cancel channel)
+                          on-cancel))))))
 
-(defun subscribe-sync (queue &key consumer-tag no-local no-ack exclusive arguments (channel *channel*))
+(defun subscribe-sync (queue &key on-cancel consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (subscribe queue #'identity :type :sync
+                              :on-cancel on-cancel
                               :consumer-tag consumer-tag
                               :no-local no-local
                               :no-ack no-ack
@@ -138,3 +168,13 @@
                                                   :redelivered (amqp-method-field-redelivered method)
                                                   :delivery-tag (amqp-method-field-delivery-tag method)
                                                   :consumer-tag (amqp-method-field-consumer-tag method))))
+
+(defmethod channel.receive (channel (method amqp-method-basic-cancel))
+  (if-let ((consumer (find-consumer channel (amqp-method-field-consumer-tag method))))
+    (if (eq :sync (consumer-type consumer))
+        (safe-queue:mailbox-send-message (channel-mailbox channel) method)
+        (progn
+          (remove-consumer channel consumer)
+          (when (consumer-on-cancel consumer)
+            (funcall (consumer-on-cancel consumer) consumer))))
+    (log:error "Unknown consumer tag ~a." (amqp-method-field-consumer-tag method))))

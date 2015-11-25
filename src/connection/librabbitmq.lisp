@@ -166,6 +166,15 @@
                                                                :class-id (getf channel-close 'cl-rabbit::class-id)
                                                                :method-id (getf channel-close 'cl-rabbit::method-id)))))
 
+(defun process-basic-cancel-method (connection method channel)
+  (declare (ignore connection))
+  (let ((basic-cancel
+          (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
+                                     '(:struct cl-rabbit::amqp-basic-cancel-t))))
+    (channel.receive channel
+                     (make-instance 'amqp-method-basic-cancel :consumer-tag (cl-rabbit::bytes->string (getf basic-cancel 'cl-rabbit::consumer-tag))
+                                                              :nowait (getf basic-cancel 'cl-rabbit::nowait)))))
+
 (defun process-connection-close-method (connection method)
   (let ((connection-close
           (cffi:convert-from-foreign (getf method 'cl-rabbit::decoded)
@@ -219,6 +228,7 @@
                            (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method connection method channel))
                            (#.cl-rabbit::+amqp-basic-return-method+  (process-basic-return-method connection method channel))
                            (#.cl-rabbit::+amqp-channel-close-method+ (process-channel-close-method connection method channel))
+                           (#.cl-rabbit::+amqp-basic-cancel-method+ (process-basic-cancel-method connection method channel))
                            (otherwise (error "Unsupported unexpected method ~a" (amqp:method-class-from-signature method-id))))
                          ;; ELSE: We won't deliver messages to a closed channel
                          (log:warn "Incoming message on closed channel: ~s" channel))
