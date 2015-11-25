@@ -244,7 +244,13 @@
                  :redelivered (cl-rabbit:envelope/redelivered envelope)
                  :exchange (cl-rabbit:envelope/exchange envelope)
                  :routing-key (cl-rabbit:envelope/routing-key envelope)
-                 :content-properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))
+                 :content-properties (let ((properties (cl-rabbit:message/properties (cl-rabbit:envelope/message envelope))))
+                                       (when (find :persistent properties)
+                                         (setf (getf properties :delivery-mode) (if (getf properties :persistent)
+                                                                                    2
+                                                                                    1))
+                                         (remf properties :persistent))
+                                       (apply #'make-instance 'amqp-basic-class-properties properties))
                  :content (cl-rabbit:message/body (cl-rabbit:envelope/message envelope))))
 
 (defun wait-for-frame (connection)
@@ -568,7 +574,7 @@
     (make-instance 'amqp-method-queue-delete-ok
                    :message-count message-count)))
 
-(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-unbind)) 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-queue-unbind))
   (cl-rabbit:queue-unbind (connection-cl-rabbit-connection connection)
                           (channel-id channel)
                           :queue (amqp-method-field-queue method)
@@ -621,10 +627,15 @@
                                    :exchange (cl-rabbit::bytes->string (getf struct 'cl-rabbit::exchange))
                                    :routing-key (cl-rabbit::bytes->string (getf struct 'cl-rabbit::routing-key))
                                    :message-count (getf struct 'cl-rabbit::message-count)
-                                   :content-properties (apply #'make-instance 'amqp-basic-class-properties
-                                                              (cl-rabbit::load-properties-to-plist
-                                                               (cffi:foreign-slot-value message
-                                                                                        '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties)))
+                                   :content-properties (let ((properties (cl-rabbit::load-properties-to-plist
+                                                                          (cffi:foreign-slot-value message
+                                                                                                   '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::properties))))
+                                                         (when (find :persistent properties)
+                                                           (setf (getf properties :delivery-mode) (if (getf properties :persistent)
+                                                                                                      2
+                                                                                                      1))
+                                                           (remf properties :persistent))
+                                                         (apply #'make-instance 'amqp-basic-class-properties properties))
                                    :content (cl-rabbit::bytes->array
                                              (cffi:foreign-slot-value message
                                                                       '(:struct cl-rabbit::amqp-message-t) 'cl-rabbit::body)))))))))
