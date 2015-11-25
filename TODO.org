@@ -41,3 +41,5 @@
   - [ ] queue
   - [ ] channel
   - [ ] consumer
+- [ ] Maybe add state slot[unsubsribed|active|cancelled] to Consumer
+  Note read/write operations should be probably guarded with rw-lock
