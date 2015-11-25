@@ -119,6 +119,7 @@
            #:consume
            #:subscribe
            #:subscribe-sync
+           #:unsubscribe
            #:qos
 
            #:->))
