@@ -23,7 +23,7 @@
    (routing-key  :type string
                  :initarg :routing-key
                  :reader message-routing-key)
-   (properties   :type list
+   (properties   :type amqp-basic-class-properties
                  :initarg :properties
                  :reader message-properties)
    (body         :type (simple-array (unsigned-byte 8) (*))
