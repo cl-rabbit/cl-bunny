@@ -26,7 +26,7 @@
   (amqp-property-reply-to (message-properties message)))
 
 (defun message-expiration (message)
-  (amqp-property-priority (message-expiration message)))
+  (amqp-property-expiration (message-properties message)))
 
 (defun message-message-id (message)
   (amqp-property-message-id (message-properties message)))
