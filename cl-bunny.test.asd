@@ -14,7 +14,8 @@
   :depends-on ("cl-bunny"
                "prove"
                "log4cl"
-               "cl-interpol")
+               "cl-interpol"
+               "mw-equiv")
   :serial t
   :components ((:module "t"
                 :serial t
@@ -46,6 +47,7 @@
                     :components
                     ((:test-file "basic.ack")
                      (:test-file "basic.cancel")
+                     (:test-file "basic-properties")
                      (:test-file "basic.return")
                      (:test-file "exchange.bind")
                      (:test-file "exchange.unbind")
