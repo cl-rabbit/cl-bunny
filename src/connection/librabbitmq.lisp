@@ -107,7 +107,12 @@
                                                     ("version" . "0.1")
                                                     ("copyright" . "Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and CONTRIBUTORS <https://github.com/cl-rabbit/cl-bunny/blob/master/CONTRIBUTORS.md>")
                                                     ("information" . "see https://github.com/cl-rabbit/cl-bunny")
-                                                    ("capabilities" . (("connection.blocked" . nil)))))
+                                                    ("capabilities" . (("connection.blocked" . nil)
+                                                                       ("publisher_confirms" . t)
+                                                                       ("consumer_cancel_notify" . t)
+                                                                       ("exchange_exchange_bindings" . t)
+                                                                       ("basic.nack" . t)
+                                                                       ("authentication_failure_close" . t)))))
 
           (setf (slot-value connection 'control-fd) (eventfd:eventfd.new 0)
                 (slot-value connection 'control-mailbox) (safe-queue:make-queue)
