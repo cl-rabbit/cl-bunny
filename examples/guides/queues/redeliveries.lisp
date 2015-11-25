@@ -44,7 +44,7 @@
                          ((> (random 10) 4)
                           (message.ack message) ;; (message.ack message :multiple nil)
                           (log:info "[consumer1] Got message #~a, redelivered?: ~a, ack-ed"
-                                    (header-value (properties-headers (message-properties message)) "i")
+                                    (message-header-value message "i")
                                     (message-redelivered-p message)))
                          (t
                           ;; some messages are not ack-ed and will remain in the queue for redelivery
