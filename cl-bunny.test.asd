@@ -45,6 +45,7 @@
                     :serial t
                     :components
                     ((:test-file "basic.ack")
+                     (:test-file "basic.cancel")
                      (:test-file "basic.return")
                      (:test-file "exchange.bind")
                      (:test-file "exchange.unbind")
