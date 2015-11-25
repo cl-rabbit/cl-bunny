@@ -219,7 +219,7 @@
                            (#.cl-rabbit::+amqp-basic-ack-method+ (process-basic-ack-method connection method channel))
                            (#.cl-rabbit::+amqp-basic-return-method+  (process-basic-return-method connection method channel))
                            (#.cl-rabbit::+amqp-channel-close-method+ (process-channel-close-method connection method channel))
-                           (otherwise (error "Unsupported unexpected method ~a" method-id)))
+                           (otherwise (error "Unsupported unexpected method ~a" (amqp:method-class-from-signature method-id))))
                          ;; ELSE: We won't deliver messages to a closed channel
                          (log:warn "Incoming message on closed channel: ~s" channel))
                      ;; ELSE: Unused channel
