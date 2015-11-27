@@ -26,7 +26,7 @@
                                                      ("true_field" . t)
                                                      ("false_field" . nil)
                                                      ("void_field" . :void)
-                                                     ;; ("array_field" . #(1 2 3))
+                                                     ("array_field" . #(1 2 3))
                                                      ("decimal_field" . #$1.2))
                                            :persistent t
                                            :priority 8
@@ -50,7 +50,7 @@
                                             ("true_field" . t)
                                             ("false_field" . nil)
                                             ("void_field" . :void)
-                                            ;; ("array_field" . #(1 2 3))
+                                            ("array_field" . #(1 2 3))
                                             ("decimal_field" . #$1.2))
                 :test (lambda (x y)
                         (mw-equiv:object= x y t)))
@@ -84,7 +84,7 @@
                                                      ("true_field" . t)
                                                      ("false_field" . nil)
                                                      ("void_field" . :void)
-                                                     ;; ("array_field" . #(1 2 3))
+                                                     ("array_field" . #(1 2 3))
                                                      ("decimal_field" . #$1.2))
                                            :persistent t
                                            :priority 8
@@ -109,7 +109,7 @@
                                             ("true_field" . t)
                                             ("false_field" . nil)
                                             ("void_field" . :void)
-                                            ;; ("array_field" . #(1 2 3))
+                                            ("array_field" . #(1 2 3))
                                             ("decimal_field" . #$1.2))
                 :test (lambda (x y)
                         (mw-equiv:object= x y t)))
