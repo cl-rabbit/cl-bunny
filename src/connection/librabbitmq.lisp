@@ -459,6 +459,9 @@
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
 
+(defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-connection-close))
+  (cl-rabbit:connection-close (connection-cl-rabbit-connection connection) :code (amqp-method-field-reply-code method)))
+
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-connection-close-ok))
   (declare (ignore channel))
   (cl-rabbit:connection-close-ok (connection-cl-rabbit-connection connection)

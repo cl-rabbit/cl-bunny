@@ -109,18 +109,18 @@
 
 (defmethod connection.close% ((connection threaded-connection) timeout)
   (if (eq (bt:current-thread) (connection-thread connection))
-      (throw 'stop-connection (values))
-      (if (bt:thread-alive-p (connection-thread connection))
-          (handler-case
-              (progn (execute-in-connection-thread (connection)
-                       (connection.close :connection connection))
-                     (handler-case
-                         (sb-thread:join-thread (connection-thread connection) :timeout timeout)
-                       (sb-thread:join-thread-error (e)
-                         (case (sb-thread::join-thread-problem e)
-                           (:timeout (log:error "Connection thread stalled?")
-                            (sb-thread:terminate-thread (connection-thread connection)))
-                           (:abort (log:error "Connection thread aborted"))
-                           (t (log:error "Connection state is unknown"))))))
-            (connection-closed-error () (log:debug "Closing already closed connection")))
-          t)))
+      (progn (connection.send connection connection (make-instance 'amqp-method-connection-close :reply-code +amqp-reply-success+))
+             (throw 'stop-connection (values)))
+      (handler-case
+          (progn (execute-in-connection-thread (connection)
+                   (connection.close% connection timeout))
+                 (handler-case
+                     (sb-thread:join-thread (connection-thread connection) :timeout timeout)
+                   (sb-thread:join-thread-error (e)
+                     (case (sb-thread::join-thread-problem e)
+                       (:timeout (log:error "Connection thread stalled?")
+                        (sb-thread:terminate-thread (connection-thread connection)))
+                       (:abort (log:error "Connection thread aborted"))
+                       (t (log:error "Connection state is unknown"))))))
+        (connection-closed-error () (log:debug "Closing already closed connection"))))
+  t)
