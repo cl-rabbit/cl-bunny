@@ -80,30 +80,27 @@
       ;; use lparallel promise to lift errors
       (let ((promise (threaded-promise)))
         (execute-in-connection-thread ((channel-connection channel))
-          (blackbird:catcher
-           (blackbird:attach
-            (channel.send channel method)
-            (lambda (&rest vals)
-              (promise.resolve promise (values-list vals))))
-           (amqp-channel-error (e)
-                               (log:debug "~a" e)
-                               (channel.close-ok% channel)
-                               (when (channel-on-error-callback% channel)
-                                 (funcall (channel-on-error-callback% channel) e))
-                               (promise.reject promise e))
-           (amqp-connection-error (e)
-                                  (log:debug "~a" e)
-                                  (throw 'stop-connection
-                                    (lambda ()
-                                      (promise.reject promise e))))
-           (transport-error (e)
-                            (log:debug "~a" e)
-                            (throw 'stop-connection
-                              (lambda ()
-                                (promise.reject promise e))))
-           (error (e)
-                  (log:debug "~a" e)
+          (handler-case
+              (promise.resolve promise (channel.send channel method))
+            (amqp-channel-error (e)
+              (log:debug "~a" e)
+              (channel.close-ok% channel)
+              (when (channel-on-error-callback% channel)
+                (funcall (channel-on-error-callback% channel) e))
+              (promise.reject promise e))
+            (amqp-connection-error (e)
+              (log:debug "~a" e)
+              (throw 'stop-connection
+                (lambda ()
                   (promise.reject promise e))))
+            (transport-error (e)
+              (log:debug "~a" e)
+              (throw 'stop-connection
+                (lambda ()
+                  (promise.reject promise e))))
+            (error (e)
+              (log:debug "~a" e)
+              (promise.reject promise e))))
         (promise.force promise :timeout *force-timeout*))))
 
 (defmethod channel.send (channel method)
