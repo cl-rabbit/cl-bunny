@@ -439,11 +439,8 @@
 
 (defmethod connection.send :around ((connection librabbitmq-connection) channel method)
   (log:trace "connection: ~a, channel: ~a, method: ~a" connection channel method)
-  (unless (or (typep method 'amqp-method-connection-close)
-              (typep method 'amqp-method-channel-close))
-    (assert (connection-open-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel)))
-  (unless (or (typep method 'amqp-method-channel-open)
-              (typep method 'amqp-method-channel-close))
+  (assert (connection-open-p (channel-connection channel)) () 'connection-closed-error :connection (channel-connection channel))
+  (unless (typep method 'amqp-method-channel-open)
     (assert (channel-open-p% channel) () 'channel-closed-error :channel channel))
   ;; convert close replies for sync methods
   (handler-case
