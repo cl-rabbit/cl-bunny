@@ -29,7 +29,7 @@
                  (:module "unit"
                   :serial t
                   :components
-                  ((:test-file "channel-send")
+                  (;;(:test-file "channel-send")
                    (:test-file "connection-spec")
                    (:test-file "connection-pool")))
                  (:module "integration"
