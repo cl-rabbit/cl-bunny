@@ -84,9 +84,11 @@
               (promise.resolve promise (channel.send channel method))
             (amqp-channel-error (e)
               (log:debug "~a" e)
-              (channel.close-ok% channel)
-              (when (channel-on-error-callback% channel)
-                (funcall (channel-on-error-callback% channel) e))
+              (channel.receive channel (make-instance 'amqp-method-channel-close
+                                                      :method-id (amqp::amqp-error-method e)
+                                                      :class-id (amqp::amqp-error-class e)
+                                                      :reply-text (amqp::amqp-error-reply-text e)
+                                                      :reply-code (amqp::amqp-error-reply-code e)))
               (promise.reject promise e))
             (amqp-connection-error (e)
               (log:debug "~a" e)
@@ -141,16 +143,18 @@
                      :active active)))
 
 (defun channel.close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
-  (handler-case
-      (channel.send% channel
-          (make-instance 'amqp-method-channel-close
+  (let ((method (make-instance 'amqp-method-channel-close
                          :reply-code reply-code
                          :reply-text reply-text
                          :class-id class-id
-                         :method-id method-id)
-        (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
-        (connection.deregister-channel channel))
-    (connection-closed-error () (log:debug "Closing channel on closed connection"))))
+                         :method-id method-id)))
+    (handler-case
+        (channel.send% channel
+            method
+            (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
+          (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
+          (connection.deregister-channel channel))
+      (connection-closed-error () (log:debug "Closing channel on closed connection")))))
 
 (defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (ignore-some-conditions (channel-closed-error connection-closed-error network-error)
@@ -236,6 +240,8 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 (defmethod channel.receive (channel (method amqp-method-channel-close))
   (log:debug "Received channel.close ~a" (amqp-method-field-reply-text method))
   (channel.close-ok% channel)
+  (setf (channel-open-p% channel) nil)
+  (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
   (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
     (when (and error-type (channel-on-error-callback% channel))
       (funcall (channel-on-error-callback% channel) (make-condition error-type

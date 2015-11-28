@@ -371,7 +371,12 @@
           (log:debug "Stopping AMQP connection")
           (when (connection-pool connection)
             (connections-pool.remove connection))
-          (maphash (lambda (id channel) (declare (ignorable id)) (setf (channel-open-p% channel) nil)) (connection-channels connection))
+          (maphash (lambda (id channel)
+                     (declare (ignorable id))
+                     (setf (channel-open-p% channel) nil)
+                     (safe-queue:mailbox-send-message (channel-mailbox channel)
+                                                      (make-instance 'amqp-method-connection-close)))
+                   (connection-channels connection))
           (log:debug "closed-all-channels")
           ;; drain control mailbox
           (loop for lambda = (safe-queue:dequeue control-mailbox)

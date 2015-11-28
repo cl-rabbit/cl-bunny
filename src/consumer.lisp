@@ -91,12 +91,16 @@
   ;; maybe replace it with flet?
   (let ((mailbox (channel-mailbox channel)))
     (loop
+      (unless (channel-open-p channel)
+        (error 'channel-closed-error :channel channel))
       (multiple-value-bind (message ok)
           (safe-queue:mailbox-receive-message mailbox :timeout timeout)
         (when message
           (etypecase message
             (message (setf message (dispatch-consumed-message channel message)))
-            (amqp-method-basic-cancel (dispatch-consumer-cancel channel message))))
+            (amqp-method-basic-cancel (dispatch-consumer-cancel channel message))
+            (amqp-method-channel-close (error 'channel-closed-error :channel channel))
+            (amqp-method-connection-close (error 'connection-closed-error :connection (channel-connection channel)))))
         (when one-shot
           (return (values message ok)))))))
 
