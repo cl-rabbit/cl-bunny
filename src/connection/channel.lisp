@@ -156,20 +156,19 @@
     (connection-closed-error () (log:debug "Closing channel on closed connection"))))
 
 (defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
-  (ignore-some-conditions (network-error)
-    (when (channel-open-p channel)
-      (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
-                                                        :reply-code reply-code
-                                                        :reply-text reply-text
-                                                        :class-id class-id
-                                                        :method-id method-id))))
-        (flet ((cb (reply)
-                 (declare (ignorable reply))
-                 (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
-                 (connection.deregister-channel channel)))
-          (if (blackbird:promisep reply)
-              (blackbird:attach reply (function cb))
-              (cb reply)))))))
+  (ignore-some-conditions (channel-closed-error connection-closed-error network-error)
+    (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
+                                                      :reply-code reply-code
+                                                      :reply-text reply-text
+                                                      :class-id class-id
+                                                      :method-id method-id))))
+      (flet ((cb (reply)
+               (declare (ignorable reply))
+               (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
+               (connection.deregister-channel channel)))
+        (if (blackbird:promisep reply)
+            (blackbird:attach reply (function cb))
+            (cb reply))))))
 
 (defun channel.close-ok% (channel)
   (channel.send% channel
