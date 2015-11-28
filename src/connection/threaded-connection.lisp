@@ -3,9 +3,9 @@
 (defparameter *force-timeout* nil)
 
 (defstruct connection-state-lock
-  (rlock (bt:make-lock))
-  (rtrylock (bt:make-lock))
-  (resource (bt:make-lock))
+  (rlock (bt:make-lock    "rw-lcok-rlock"))
+  (rtrylock (bt:make-lock "rw-lock-rtrylock"))
+  (resource (bt:make-lock "rw-lock-resource"))
   (rcount 0 :type (unsigned-byte 32)))
 
 (defun read-lock-begin (connection-state-lock)
@@ -81,16 +81,16 @@
 
 (defmacro execute-in-connection-thread-sync ((&optional (connection '*connection*)) &body body)
   (with-gensyms (lock condition return connection% error)
-    `(let ((,lock (bt:make-recursive-lock))
+    `(let ((,lock (bt:make-lock "xecute-in-connection-thread-sync"))
            (,condition (bt:make-condition-variable))
            (,return nil)
            (,connection% ,connection)
            (,error))
        (if (connection-open-p ,connection%)
-           (bt:with-recursive-lock-held (,lock)
+           (bt:with-lock-held (,lock)
              (funcall (connection-lambda ,connection%)
                       (lambda (&aux (*connection* ,connection%))
-                        (bt:with-recursive-lock-held (,lock)
+                        (bt:with-lock-held (,lock)
                           (handler-case
                               (setf ,return
                                     (multiple-value-list
