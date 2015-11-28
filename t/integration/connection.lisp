@@ -24,7 +24,9 @@
                                     :arguments (list *connection*))
              (sleep 1)
              (is-error (queue.declare) 'bunny:connection-closed-error
-                       "while closing connection control mailbox drained and all functions called. connection is closed at this time"))))
+                       "while closing connection control mailbox drained and all functions called. connection is closed at this time")
+             ))
+         (pass "passed"))
 
   (progn (with-connection ()
            (with-channel ()
@@ -41,7 +43,7 @@
                  (sleep 5)
                  (is-error (queue.declare) 'bunny:channel-closed-error "Can't use closed channel")
                  (connection.close)))))
-         (ok "Can safely ignore closed channel and/or connection in with-channel/consumers cleanup"))
+         (pass "Can safely ignore closed channel and/or connection in with-channel/consumers cleanup"))
 
 
   (progn (with-connection ()
@@ -59,7 +61,7 @@
                                         :arguments (list *channel*))
                  (sleep 5)
                  (connection.close)))))
-         (ok "Can safely abort stalled connection"))
+         (pass "Can safely abort stalled connection"))
 
   (progn (with-connection ()
            (with-channel ()
@@ -76,11 +78,11 @@
                                         :arguments (list *channel*))
                  (sleep 5)
                  (connection.close)))))
-         (ok "Do not block when closing closed connection"))
+         (pass "Do not block when closing closed connection"))
 
   (progn (loop for i from 1 to 1000 do ;; <- actually there should be 10000 but Travis CI can't handle that
                   (with-connection ()
                     (with-channel ())))
-         (ok "Resources are properly deallocated, no races")))
+         (pass "Resources are properly deallocated, no races")))
 
 (finalize)
