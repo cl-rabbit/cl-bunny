@@ -147,5 +147,5 @@
                             (exchange-on-return-callback exchange))
                        (exchange-on-return-callback channel))))
     (if callback
-        (funcall callback message)
+        (maybe-execute-callback callback message)
         (log:warn "Got unhandled returned message"))))

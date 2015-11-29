@@ -244,7 +244,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
   (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
     (when (and error-type (channel-on-error-callback% channel))
-      (funcall (channel-on-error-callback% channel) (make-condition error-type
+      (maybe-execute-callback (channel-on-error-callback% channel) (make-condition error-type
                                                                     :reply-code (amqp-method-field-reply-code method)
                                                                     :reply-text (amqp-method-field-reply-text method)
                                                                     :connection (channel-connection channel)

@@ -118,7 +118,10 @@
                 (slot-value connection 'control-mailbox) (safe-queue:make-queue)
                 (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
                 (slot-value connection 'heartbeat) (connection-heartbeat% connection)
-                (slot-value connection 'state) :open)))
+                (slot-value connection 'state) :open)
+          (unless *callback-executor*
+            (log:warn "Callback executor not set. Will use lparallel kernel")
+            (create-lparallel-callback-executor))))
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
 

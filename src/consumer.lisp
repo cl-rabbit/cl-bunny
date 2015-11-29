@@ -107,13 +107,19 @@
 ;; maybe just (let ((*channel* (consumer-channel consumer))) ... ) in execute-consumer?
 (defun wrap-async-subscribe-with-channel (fn channel)
   (lambda (message)
-    (let ((*channel* channel))
-      (funcall fn message))))
+    (maybe-execute-callback
+     (lambda (message)
+       (let ((*channel* channel))
+         (funcall fn message)))
+     message)))
 
 (defun wrap-async-on-cancel-with-channel (on-cancel channel)
   (lambda (consumer)
-    (let ((*channel* channel))
-      (funcall on-cancel consumer))))
+    (maybe-execute-callback
+     (lambda (consumer)
+       (let ((*channel* channel))
+         (funcall on-cancel consumer)))
+     consumer)))
 
 (defun subscribe (queue fn  &key (type :async) on-cancel consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
   (execute-in-connection-thread-sync ((channel-connection channel))
@@ -180,5 +186,5 @@
         (progn
           (remove-consumer channel consumer)
           (when (consumer-on-cancel consumer)
-            (funcall (consumer-on-cancel consumer) consumer))))
+            (maybe-execute-callback (consumer-on-cancel consumer) consumer))))
     (log:error "Unknown consumer tag ~a." (amqp-method-field-consumer-tag method))))
