@@ -22,6 +22,28 @@
         (is (exchange.fanout) (exchange.fanout))
         (is (exchange.headers) (exchange.headers))
         (is (exchange.topic) (exchange.topic))
-        (is (exchange.match) (exchange.match))))))
+        (is (exchange.match) (exchange.match)))))
+
+  (subtest "Exchange on return callback"
+    (with-connection ()
+    (with-channel ()
+      (let* ((x (exchange.default))
+             (q (queue.declare :exclusive t))
+             (consumed)
+             (returned))
+
+        (setf (exchange-on-return-callback x)
+              (lambda (returned-message)
+                (setf returned (message-body-string returned-message))))
+
+        (subscribe q (lambda (message)
+                       (setf consumed (message-body-string message))))
+
+        (publish x "This will NOT be returned" :mandatory t :routing-key q)
+        (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))
+
+        (sleep 1)
+        (is consumed "This will NOT be returned")
+        (is returned "This will be returned"))))))
 
 (finalize)
