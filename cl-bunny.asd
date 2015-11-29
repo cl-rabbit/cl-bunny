@@ -32,7 +32,8 @@
                   ((:file "pipe")
                    (:file "int-allocator")
                    (:file "channel-id-allocator")
-                   (:file "threaded-promise")))
+                   (:file "threaded-promise")
+                   (:file "callback-executor")))
                  (:file "conditions")
                  (:file "properties-and-headers")
                  (:module "connection"
