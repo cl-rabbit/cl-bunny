@@ -12,11 +12,11 @@
               (lambda (returned-message)
                 (log:info "Got returned message ~a" (message-body-string returned-message))))
 
-        (subscribe q (lambda (message)                       
+        (subscribe q (lambda (message)
                        (log:info "~a received ~a" q (message-body-string message))))
 
         (publish x "This will NOT be returned" :mandatory t :routing-key q)
-        (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))        
+        (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))
 
         (log:info "Waiting...")
         (sleep 3)
