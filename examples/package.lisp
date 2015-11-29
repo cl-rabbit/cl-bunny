@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage :cl-bunny.examples
-  (:use :cl :cl-bunny :amqp :alexandria :blackbird)
+  (:use :cl :cl-bunny :amqp :alexandria)
   (:nicknames :bunny.examples)
   (:export #:direct-exchange-routing
            #:direct-exchange-routing-sync
