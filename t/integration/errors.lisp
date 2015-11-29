@@ -17,6 +17,7 @@
         (with-channel (:on-error (lambda (e)
                                    (setf error e)))
           (ignore-errors (queue.bind "xwewf" "x")))
+        (sleep 1)
         (is-type error 'amqp:amqp-error-not-found))))
 
   (subtest "Async channel error"
