@@ -4,8 +4,7 @@
   (:use :cl
         :alexandria
         :prove
-        :cl-bunny
-        :blackbird)
+        :cl-bunny)
   (:shadowing-import-from :prove
                           :*debug-on-error*))
 
