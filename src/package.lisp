@@ -136,4 +136,7 @@
            #:unsubscribe
            #:qos
 
-           #:->))
+           #:->
+
+           #:execute-callback
+           #:*callback-executor*))
