@@ -30,8 +30,9 @@
                   :serial t
                   :components
                   (;;(:test-file "channel-send")
-                   (:test-file "connection-spec")
-                   (:test-file "connection-pool")))
+                  (:test-file "channel-id-allocator")
+                  (:test-file "connection-spec")
+                  (:test-file "connection-pool")))
                  (:module "integration"
                   :serial t
                   :components

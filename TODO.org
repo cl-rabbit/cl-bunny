@@ -28,11 +28,11 @@
   - [-] Heartbeats
     - [X] support/implementation
     - [ ] tests
-- [ ] Channel id allocator
-  - [ ] Tests
+- [X] Channel id allocator
+  - [X] Tests
 - [ ] SSL/TLS
- - [ ] Support
- - [ ] Tests
+  - [ ] Support
+  - [ ] Tests
 - [-] Print-objects for
   - [X] connection spec
   - [ ] connection
