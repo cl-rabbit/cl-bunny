@@ -18,6 +18,13 @@
   (with-connection ()
     (with-channel ()
       (is-error (channel.flow nil) 'amqp:amqp-error-not-implemented "Inactive channels not supported")
-      (is (connection-open-p *connection*) nil "Not supported error closes connection"))))
+      (is (connection-open-p *connection*) nil "Not supported error closes connection")))
+
+  (progn
+    (with-connection ()
+      (with-channel ()
+        (channel.close 200 0 0))
+      (with-channel ()))
+    (pass "Can quietly close closed channel")))
 
 (finalize)
