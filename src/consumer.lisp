@@ -24,6 +24,10 @@
               :initarg :on-cancel
               :reader consumer-on-cancel)))
 
+(defmethod print-object ((consumer consumer) s)
+  (print-unreadable-object (consumer s :type t :identity t)
+    (format s "~s queue=~s" (consumer-tag consumer) (queue-name (consumer-queue consumer)))))
+
 (defmacro with-consumers ((&rest consumers) &body body)
   (assert consumers)
   (with-gensyms (new-consumers)
