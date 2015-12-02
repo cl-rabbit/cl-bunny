@@ -21,7 +21,7 @@
 
 (defmethod print-object ((queue queue) s)
   (print-unreadable-object (queue s :type t :identity t)
-    (format s "~s" (queue-name queue))))
+    (format s "~s ~@[exclusive~]" (queue-name queue) (queue-exclusive-p queue))))
 
 ;; maybe there should be queue object with its own mailbox?
 
