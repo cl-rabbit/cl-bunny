@@ -40,6 +40,10 @@
              :initarg :on-error
              :accessor channel-on-error-callback%)))
 
+(defmethod print-object ((channel channel) s)
+  (print-unreadable-object (channel s :type t :identity t)
+    (format s "~:[closed~;open~] id=~a mode=~(~a~) consumers=~a" (channel-open-p channel) (channel-id channel) (channel-mode channel) (hash-table-count (channel-consumers channel)))))
+
 (defmethod channel-connection ((connection connection))
   connection)
 
