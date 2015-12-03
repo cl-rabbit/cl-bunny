@@ -47,7 +47,7 @@ If you are new to RabbitMQ you may find the following links useful:
 
 ```lisp
 (defun hello-world ()
-  (with-connection ("amqp://")
+  (with-connection ()
     (with-channel ()
       (let ((x (exchange.default)))
         (->
@@ -70,7 +70,7 @@ If you are new to RabbitMQ you may find the following links useful:
 
 #### Headers Exchange
 ```lisp
-(with-connection ("amqp://")
+(with-connection ()
   (with-channel ()
     (let* ((x (exchange.headers "headers" :auto-delete t))
            (q1 (->
@@ -108,7 +108,7 @@ If you are new to RabbitMQ you may find the following links useful:
 #### Mandatory messages
 
 ```lisp
-(with-connection ("amqp://")
+(with-connection ()
   (with-channel ()
     (let* ((x (exchange.default))
            (q (queue.declare :exclusive t)))
