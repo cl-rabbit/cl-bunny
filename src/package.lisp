@@ -71,6 +71,9 @@
            #:connection-spec-vhost
            #:connection-spec-use-tls-p
            #:connection-spec-use-ipv6-p
+           #:connection-spec-channel-max
+           #:connection-spec-frame-max
+           #:connection-spec-heartbeat-interval
            #:connection-open-p
            #:connection-channel-max
            #:connection-frame-max
