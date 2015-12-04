@@ -106,7 +106,7 @@
   (if (and (starts-with #\[ host)
            (ends-with #\] host))
       (let ((ipv6-address (subseq host 1 (1- (length host)))))
-        (if (iolib:ensure-address ipv6-address :errorp nil)
+        (if (quri:ipv6-addr-p ipv6-address)
             (values ipv6-address t)
             (error "Invalid IPv6 address ~a" ipv6-address))) ;; TODO: specialize error))
       (maybe-unescape-component host)))
