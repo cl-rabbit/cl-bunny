@@ -4,7 +4,12 @@
 
 (subtest "Connection errors"
   (is-error (with-connection ("amqp://localost")) 'transport-error)
-  (is-error (with-connection ("amqp://localhost/ewgfrmiogtiogwr")) 'amqp:amqp-error-not-allowed)
+  ;; it theory it should throw amqp:amqp-error-not-allowed
+  ;; since authentication_failure_close is set
+  ;; however on my local pc it throws transport-error i.e. authentication_failure_close seems to be ignored
+  ;; with rabbitmq built from sources it throws amqp:amqp-error-not-allowed as expected
+  ;; on TravisCI it throws connnection-closed.
+  (is-error (with-connection ("amqp://localhost/ewgfrmiogtiogwr")) 'error)
 
   (with-connection ("amqp://")
     (with-channel ()
