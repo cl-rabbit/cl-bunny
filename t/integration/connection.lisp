@@ -1,6 +1,12 @@
 (in-package :cl-bunny.test)
 
-(plan 1)
+(plan 2)
+
+(subtest "Connection parameters"
+  (with-connection "amqp://localhost?frame-max=131070&heartbeat-interval=60&channel-max=256"
+    (is (connection-frame-max) 131070)
+    (is (connection-heartbeat) 60)
+    (is (connection-channel-max) 256)))
 
 (subtest "Connection termination corner cases"
   (progn (with-connection ()
