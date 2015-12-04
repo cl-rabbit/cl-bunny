@@ -16,7 +16,6 @@
              :reader connection-channels)
    (pool-tag :initarg :pool-tag :accessor connection-pool-tag)
    (pool :initform nil :accessor connection-pool)
-   (heartbeat :initform 0 :initarg :heartbeat)
    (state :initform :closed :reader connection-state)))
 
 (defgeneric connection-channel-max% (connection))
@@ -48,14 +47,15 @@
   (when (connection-open-p connection)
     connection))
 
-(defgeneric connection.new% (connection-type spec shared heartbeat))
+(defgeneric connection.new% (connection-type spec pool-tag))
 
-(defun connection.new (&optional (spec "amqp://") &key shared (heartbeat 0))
+(defun connection.new (&optional (spec "amqp://") &key (heartbeat +heartbeat-interval+))
   (assert (or (positive-integer-p heartbeat)
               :default))
-  (connection.new% *connection-type* spec shared (if (eq :default heartbeat)
-                                                     +heartbeat-interval+
-                                                     heartbeat)))
+  (let ((spec (make-connection-spec spec)))
+    (unless (= heartbeat +heartbeat-interval+)
+      (setf (connection-spec-heartbeat-interval spec) heartbeat))
+    (connection.new% *connection-type* spec (with-output-to-string (s) (print-amqp-object spec s)))))
 
 (defgeneric connection.open% (connection))
 

@@ -47,10 +47,9 @@
       (:amqp-status-ssl-connection-failed 'network-error)
       (t e))))
 
-(defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec  shared heartbeat)
-  (let ((connection (make-instance *connection-type* :spec (make-connection-spec spec)
-                                                     :pool-tag spec
-                                                     :heartbeat heartbeat)))
+(defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec pool-tag)
+  (let ((connection (make-instance *connection-type* :spec spec
+                                                     :pool-tag pool-tag)))
     (setup-execute-in-connection-lambda connection)
     connection))
 
@@ -100,9 +99,9 @@
                                       (connection-spec-vhost spec)
                                       (connection-spec-login spec)
                                       (connection-spec-password spec)
-                                      :heartbeat (slot-value connection 'heartbeat)
-                                      :channel-max +channel-max+
-                                      :frame-max +frame-max+
+                                      :heartbeat (connection-spec-heartbeat-interval spec)
+                                      :channel-max (connection-spec-channel-max spec)
+                                      :frame-max (connection-spec-frame-max spec)
                                       :properties '(("product" . "cl-bunny(cl-rabbit transport)")
                                                     ("version" . "0.1")
                                                     ("copyright" . "Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and CONTRIBUTORS <https://github.com/cl-rabbit/cl-bunny/blob/master/CONTRIBUTORS.md>")
@@ -117,7 +116,6 @@
           (setf (slot-value connection 'control-fd) (eventfd:eventfd.new 0)
                 (slot-value connection 'control-mailbox) (safe-queue:make-queue)
                 (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
-                (slot-value connection 'heartbeat) (connection-heartbeat% connection)
                 (slot-value connection 'state) :open)
           (unless *callback-executor*
             (log:warn "Callback executor not set. Will use lparallel kernel")
