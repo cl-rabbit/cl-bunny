@@ -3,7 +3,8 @@
 (plan 1)
 
 (subtest "Connection errors"
-  (is-error (with-connection ("amqp://localhost/ewgfrmiogtiogwr")) 'transport-error)
+  (is-error (with-connection ("amqp://localost")) 'transport-error)
+  (is-error (with-connection ("amqp://localhost/ewgfrmiogtiogwr")) 'amqp:amqp-error-not-allowed)
 
   (with-connection ("amqp://")
     (with-channel ()

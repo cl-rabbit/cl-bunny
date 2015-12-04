@@ -47,6 +47,15 @@
       (:amqp-status-ssl-connection-failed 'network-error)
       (t e))))
 
+(defun translate-rabbitmq-server-error (e connection channel)
+  (error (amqp-error-type-from-reply-code (cl-rabbit:rabbitmq-server-error/reply-code e))
+         :reply-code (cl-rabbit:rabbitmq-server-error/reply-code e)
+         :reply-text (cl-rabbit:rabbitmq-server-error/reply-text e)
+         :connection connection
+         :channel channel
+         :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
+         :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))
+
 (defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec pool-tag)
   (let ((connection (make-instance *connection-type* :spec spec
                                                      :pool-tag pool-tag)))
@@ -120,6 +129,8 @@
           (unless *callback-executor*
             (log:warn "Callback executor not set. Will use lparallel kernel")
             (create-lparallel-callback-executor))))
+    (cl-rabbit:rabbitmq-server-error (e)
+      (error (translate-rabbitmq-server-error e connection nil)))
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
 
@@ -452,13 +463,7 @@
   (handler-case
       (call-next-method)
     (cl-rabbit:rabbitmq-server-error (e)
-      (error (amqp-error-type-from-reply-code (cl-rabbit:rabbitmq-server-error/reply-code e))
-             :reply-code (cl-rabbit:rabbitmq-server-error/reply-code e)
-             :reply-text (cl-rabbit:rabbitmq-server-error/reply-text e)
-             :connection connection
-             :channel channel
-             :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
-             :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))
+      (translate-rabbitmq-server-error e connection channel))
     (cl-rabbit:rabbitmq-library-error (e)
       (error (librabbitmq-error->transport-error e)))))
 
