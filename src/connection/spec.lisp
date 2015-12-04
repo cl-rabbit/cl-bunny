@@ -1,5 +1,11 @@
 (in-package :cl-bunny)
 
+(defconstant +channel-max+ 0)
+
+(defconstant +frame-max+ 131072)
+
+(defconstant +heartbeat-interval+ 0)
+
 (defstruct (connection-spec (:constructor make-connection-spec%))
   (host "localhost" :type string)
   (port 5672 :type fixnum)
@@ -7,7 +13,10 @@
   (login "guest" :type string)
   (password "guest" :type string)
   (use-tls-p nil :type boolean)
-  (use-ipv6-p nil :type boolean))
+  (use-ipv6-p nil :type boolean)
+  (channel-max +channel-max+ :type (unsigned-byte 32))
+  (frame-max +frame-max+ :type (unsigned-byte 32))
+  (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32)))
 
 (defun render-scheme (spec stream)
   (princ (if (connection-spec-use-tls-p spec)
@@ -44,12 +53,32 @@
     ((equal "/" (connection-spec-vhost spec)))
     (t (format stream "/~a" (quri:url-encode (connection-spec-vhost spec))))))
 
+(defun get-customized-connection-parameters (spec)
+  (let ((changeset (list)))
+    (when (not (= +channel-max+ (connection-spec-channel-max spec)))
+      (push (cons "channel-max" (princ-to-string (connection-spec-channel-max spec)))
+            changeset))
+    (when (not (= +frame-max+ (connection-spec-frame-max spec)))
+      (push (cons "frame-max" (princ-to-string (connection-spec-frame-max spec)))
+            changeset))
+    (when (not (= +heartbeat-interval+ (connection-spec-heartbeat-interval spec)))
+      (push (cons "heartbeat-interval" (princ-to-string (connection-spec-heartbeat-interval spec)))
+            changeset))
+    (reverse changeset)))
+
+(defun render-connection-parameters (spec stream)
+  (let ((changeset (get-customized-connection-parameters spec)))
+    (when changeset
+      (princ "?" stream)
+      (princ (quri:url-encode-params changeset) stream))))
+
 (defmethod print-amqp-object ((spec connection-spec) stream)
   (render-scheme spec stream)
   (render-userinfo spec stream)
   (render-host spec stream)
   (render-port spec stream)
-  (render-vhost spec stream))
+  (render-vhost spec stream)
+  (render-connection-parameters spec stream))
 
 (defmethod print-object ((spec connection-spec) stream)
   (print-unreadable-object (spec stream :type t :identity t)
@@ -78,8 +107,8 @@
            (ends-with #\] host))
       (let ((ipv6-address (subseq host 1 (1- (length host)))))
         (if (iolib:ensure-address ipv6-address :errorp nil)
-          (values ipv6-address t)
-          (error "Invalid IPv6 address ~a" ipv6-address))) ;; TODO: specialize error))
+            (values ipv6-address t)
+            (error "Invalid IPv6 address ~a" ipv6-address))) ;; TODO: specialize error))
       (maybe-unescape-component host)))
 
 (defun check-connection-string-host (host)
@@ -109,23 +138,48 @@
     ((stringp userinfo)
      (parse-user-info userinfo))))
 
+(defmethod check-connection-parameters ((params (eql nil)))
+  (declare (ignore params))
+  (values +channel-max+ +frame-max+ +heartbeat-interval+))
+
+(defun check-uint-parameter (params name)
+  (let* ((raw-value (assoc-value params name :test #'string-equal)))
+    (when raw-value
+      (let ((value (ignore-errors (parse-integer raw-value))))
+        (unless value
+          (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+        (when (< value 0)
+          (error "Invalid parameter ~a value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
+        value))))
+
+(defmethod check-connection-parameters ((params string))
+  (let ((decoded (quri:url-decode-params params)))
+    (values (or (check-uint-parameter decoded "channel-max") +channel-max+)
+            (or (check-uint-parameter decoded "frame-max") +frame-max+)
+            (or (check-uint-parameter decoded "heartbeat-interval") +heartbeat-interval+))))
+
 ;; see https://www.rabbitmq.com/uri-spec.html
 (defmethod make-connection-spec ((raw string))
   (multiple-value-bind (scheme userinfo host port path query fragment)
       (quri:parse-uri raw)
-    (declare (ignore query fragment))
+    (declare (ignore fragment))
     (let ((use-tls (check-connection-string-scheme scheme))
           (port (check-connection-string-port scheme port))
           (credentials (check-connection-string-credentials userinfo))
           (vhost (check-connection-string-vhost path)))
       (multiple-value-bind (host ipv6) (check-connection-string-host host)
-        (make-connection-spec% :use-tls-p use-tls
-                               :use-ipv6-p ipv6
-                               :host host
-                               :port port
-                               :vhost vhost
-                               :login (first credentials)
-                               :password (second credentials))))))
+        (multiple-value-bind (channel-max frame-max heartbeat-interval)
+            (check-connection-parameters query)
+          (make-connection-spec% :use-tls-p use-tls
+                                 :use-ipv6-p ipv6
+                                 :host host
+                                 :port port
+                                 :vhost vhost
+                                 :login (first credentials)
+                                 :password (second credentials)
+                                 :channel-max channel-max
+                                 :frame-max frame-max
+                                 :heartbeat-interval heartbeat-interval))))))
 
 (defmethod make-connection-spec ((raw (eql nil)))
   (make-connection-spec "amqp://"))

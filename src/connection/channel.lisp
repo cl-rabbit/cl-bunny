@@ -2,7 +2,6 @@
 
 (defvar *channel* nil
   "Current AMQP channel")
-(defconstant +channel-max+ 0)
 
 (deftype channel-mode ()
   `(and symbol (member :default :transactional :consume)))
