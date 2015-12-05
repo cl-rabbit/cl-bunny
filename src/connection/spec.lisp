@@ -84,9 +84,6 @@
   (print-unreadable-object (spec stream :type t :identity t)
     (print-amqp-object spec stream)))
 
-(defmethod make-connection-spec ((raw list))
-  (error "Not implemented"))
-
 (defun maybe-unescape-component (value)
   (when value
     (quri:url-decode value)))
@@ -181,5 +178,8 @@
                                  :frame-max frame-max
                                  :heartbeat-interval heartbeat-interval))))))
 
-(defmethod make-connection-spec ((raw (eql nil)))
-  (make-connection-spec "amqp://"))
+(defmethod make-connection-spec ((raw list))
+  (apply #'make-connection-spec% raw))
+
+(defmethod make-connection-spec ((spec connection-spec))
+  spec)
