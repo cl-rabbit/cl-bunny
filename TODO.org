@@ -25,9 +25,9 @@
   - [X] handle server properties
   - [ ] handle locales
   - [ ] handle Connection.Tune
-  - [-] Heartbeats
+  - [X] Heartbeats
     - [X] support/implementation
-    - [ ] tests
+    - [X] tests
 - [X] Channel id allocator
   - [X] Tests
 - [ ] SSL/TLS
