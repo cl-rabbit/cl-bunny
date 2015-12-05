@@ -14,8 +14,8 @@
   - [X] Query string tests
   - [X] Printer
   - [X] Connection parameters support via url query
-- [ ] Connection spec as list
-  - [ ] Tests
+- [X] Connection spec as list
+  - [X] Tests
 - [X] Connections Pool
   - [X] Implementation
   - [X] Tests
