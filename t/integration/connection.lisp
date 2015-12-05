@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan 2)
+(plan 3)
 
 (subtest "Connection parameters"
   (with-connection "amqp://localhost?frame-max=131070&heartbeat-interval=60&channel-max=256"
@@ -90,5 +90,42 @@
                   (with-connection ()
                     (with-channel ())))
          (pass "Resources are properly deallocated, no races")))
+
+(subtest "Heartbeat tests"
+  (subtest "When client skips more than two heartbeats server should  close connection"
+    (is-error
+     (with-connection ("amqp://" :heartbeat 6)
+       (bunny::execute-in-connection-thread-sync ()
+         (sleep 20))
+       (with-channel ()))
+     'connection-closed-error))
+
+  (subtest "We actually send heartbeats to the server"
+    (ok
+     (with-connection ("amqp://" :heartbeat 6)
+       (sleep 20)
+       (with-channel ())
+       t)))
+
+  (subtest "Heartbeats help detect closed/aborted connections"
+    (let ((closed))
+        (with-connection ("amqp://" :heartbeat 6)
+          (setf (bunny:connection-on-close-callback) (lambda (connection)
+                                                       (setf closed connection)))
+          (with-channel ()
+            (sleep 3)
+            (iolib.syscalls:close (cl-rabbit::get-sockfd (slot-value bunny:*connection* 'bunny::cl-rabbit-connection)))
+            (sleep 7)
+            (unless closed
+              (with-channel ()))
+            (is closed bunny:*connection*)))))
+
+  (subtest "Aborted connection without hearbeat"
+    (is-error (with-connection ("amqp://")
+                (sleep 3)
+                (iolib.syscalls:close (cl-rabbit::get-sockfd (slot-value bunny:*connection* 'bunny::cl-rabbit-connection)))
+                (sleep 7)
+                (with-channel ()))
+              network-error)))
 
 (finalize)
