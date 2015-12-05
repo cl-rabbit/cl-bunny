@@ -9,11 +9,11 @@
   - [X] amqp-basic-nack-async
 - [X] Protocol
   - [X] Basic.Get
-- [-] Connection string
+- [X] Connection string
   - [X] Parser tests
-  - [ ] Query string tests
+  - [X] Query string tests
   - [X] Printer
-  - [ ] Connection parameters support via url query
+  - [X] Connection parameters support via url query
 - [ ] Connection spec as list
   - [ ] Tests
 - [X] Connections Pool
