@@ -79,6 +79,7 @@
            #:connection-frame-max
            #:connection-heartbeat
            #:connection-server-properties
+           #:connection-on-close-callback
 
            #:*channel*
            #:channel-id

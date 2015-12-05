@@ -16,7 +16,12 @@
              :reader connection-channels)
    (pool-tag :initarg :pool-tag :accessor connection-pool-tag)
    (pool :initform nil :accessor connection-pool)
-   (state :initform :closed :reader connection-state)))
+   (state :initform :closed :reader connection-state)
+   ;; callbacks
+   (on-close :type function
+             :initform nil
+             :initarg :on-close
+             :accessor connection-on-close-callback%)))
 
 (defgeneric connection-channel-max% (connection))
 
@@ -46,6 +51,12 @@
 (defun check-connection-alive (connection)
   (when (connection-open-p connection)
     connection))
+
+(defun connection-on-close-callback (&optional (connection *connection*))
+  (connection-on-close-callback% connection))
+
+(defun (setf connection-on-close-callback) (cb &optional (connection *connection*))
+  (setf (connection-on-close-callback% connection) cb))
 
 (defgeneric connection.new% (connection-type spec pool-tag))
 

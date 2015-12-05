@@ -379,6 +379,7 @@
                          do (iolib:event-dispatch event-base :one-shot t))))))
         (with-write-lock (connection-state-lock connection)
           (setf (slot-value connection 'state) :closing)
+          (maybe-execute-callback (connection-on-close-callback% connection) connection)
           (eventfd.close control-fd)
           (log:debug "Stopping AMQP connection")
           (when (connection-pool connection)
