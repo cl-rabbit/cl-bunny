@@ -595,7 +595,6 @@
                           :arguments (amqp-method-field-arguments method))
   (make-instance 'amqp-method-queue-unbind-ok))
 
-
 (defmethod connection.send ((connection librabbitmq-connection) channel (method amqp-method-basic-publish))
   (cl-rabbit:basic-publish (connection-cl-rabbit-connection connection)
                            (channel-id channel)
