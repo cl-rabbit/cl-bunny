@@ -66,21 +66,15 @@ If promise resolved returns respective values
 If timeout expires throws THREADED-PROMISE-TIMEOUT"
   (with-threaded-promise-lock promise
     (unless (threaded-promise-resolved-or-rejected-p promise)
-      (let ((time (get-universal-time))) ;; just illustration 
+      ;; it can wakeup before timout elapsed or even before promise actually fulfilled
+      ;; probably reimplement using %decrement-semapthore idea from sbcl
+      (let ((time (get-universal-time))) ;; just illustration
         (loop
-           ;; it can wakeup before timout elapsed or even before promise actually fulfilled
-          ;; waiting for sbcl fix there
-          as ret = (if timeout
-                       #-sbcl (error 'threaded-promise-timeout-not-supported)
-                       #+sbcl
-                       (sb-thread:condition-wait (threaded-promise-condition-var promise)
-                                                 (threaded-promise-mutex promise)
-                                                 :timeout timeout)
-                       (bt:condition-wait (threaded-promise-condition-var promise)
-                                          (threaded-promise-mutex promise)))
-          do
-          ;; promise can be in default state because of
-          ;; timeout or just spurious wakeup
+          as ret = (bt:condition-wait (threaded-promise-condition-var promise)
+                                      (threaded-promise-mutex promise)
+                                      :timeout timeout)
+          do ;; promise can be in default state because of
+             ;; timeout or just spurious wakeup
              (when (threaded-promise-resolved-or-rejected-p promise)
                (return))
              (unless ret

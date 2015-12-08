@@ -69,7 +69,7 @@
       (return-from channel.wait-confirms% t))
     (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
         (error "Waiting for confirms on connection thread not supported yet")
-        (sb-thread:condition-wait (confirm-channel-condition-var channel) (confirm-channel-lock channel) :timeout timeout))))
+        (bt:condition-wait (confirm-channel-condition-var channel) (confirm-channel-lock channel) :timeout timeout))))
 
 (defun channel.wait-confirms (&key (channel *channel*) timeout)
   (channel.wait-confirms% channel timeout))
