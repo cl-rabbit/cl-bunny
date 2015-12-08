@@ -17,7 +17,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libfixposix-dev
   - sudo apt-get install -y libffi-dev
-  - sudo apt-get install libssl-dev
+  - sudo apt-get install -y libssl-dev
 
 install:
   - curl -L https://raw.githubusercontent.com/snmsts/roswell/$ROSWELL_BRANCH/scripts/install-for-ci.sh | sh
