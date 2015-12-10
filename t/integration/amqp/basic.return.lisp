@@ -10,9 +10,9 @@
 
         (queue.declare-temp)
 
-        (setf (exchange-on-return-callback x)
-              (lambda (returned-message)
-                (setf returned returned-message)))
+        (event+ (exchange-on-return x)
+                (lambda (returned-message)
+                  (setf returned returned-message)))
 
         (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))
 

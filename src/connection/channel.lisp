@@ -30,14 +30,14 @@
                :initform :default
                :initarg :mode
                :reader channel-mode)
-   ;; callbacks
-   (on-exchange-return :type function
-                       :initform nil
-                       :accessor exchange-on-return-callback)
+   ;; events
    (on-error :type function
-             :initform nil
+             :initform (make-instance 'bunny-event)
              :initarg :on-error
-             :accessor channel-on-error-callback%)))
+             :accessor channel-on-error%)
+   (on-return :type function
+              :initform (make-instance 'bunny-event)
+              :accessor channel-on-return%)))
 
 (defmethod print-object ((channel channel) s)
   (print-unreadable-object (channel s :type t :identity t)
@@ -58,18 +58,19 @@
                                      (<= channel-id (connection-channel-max% connection)))))
   (with-read-lock (connection-state-lock connection)
     (if (connection-open-p connection)
-        (let ((channel (make-instance 'channel :on-error on-error
-                                               :connection connection
+        (let ((channel (make-instance 'channel :connection connection
                                                :id channel-id)))
+          (when on-error
+            (event+ (channel-on-error% channel) on-error))
           (connection.register-channel channel)
           channel)
         (error 'connection-closed-error :connection connection))))
 
-(defun channel-on-error-callback (&optional (channel *channel*))
-  (channel-on-error-callback% channel))
+(defun channel-on-error (&optional (channel *channel*))
+  (channel-on-error% channel))
 
-(defun (setf channel-on-error-callback) (cb &optional (channel *channel*))
-  (setf (channel-on-error-callback% channel) cb))
+(defun channel-on-return (&optional (channel *channel*))
+  (channel-on-return% channel))
 
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
@@ -239,11 +240,11 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   (setf (channel-open-p% channel) nil)
   (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
   (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
-    (when (and error-type (channel-on-error-callback% channel))
-      (maybe-execute-callback (channel-on-error-callback% channel) (make-condition error-type
-                                                                    :reply-code (amqp-method-field-reply-code method)
-                                                                    :reply-text (amqp-method-field-reply-text method)
-                                                                    :connection (channel-connection channel)
-                                                                    :channel channel
-                                                                    :class-id (amqp-method-field-class-id method)
-                                                                    :method-id (amqp-method-field-method-id method))))))
+    (when (and error-type (channel-on-error% channel))
+      (event! (channel-on-error% channel) (make-condition error-type
+                                                          :reply-code (amqp-method-field-reply-code method)
+                                                          :reply-text (amqp-method-field-reply-text method)
+                                                          :connection (channel-connection channel)
+                                                          :channel channel
+                                                          :class-id (amqp-method-field-class-id method)
+                                                          :method-id (amqp-method-field-method-id method))))))

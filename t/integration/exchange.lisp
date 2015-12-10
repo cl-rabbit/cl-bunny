@@ -24,7 +24,7 @@
         (is (exchange.topic) (exchange.topic))
         (is (exchange.match) (exchange.match)))))
 
-  (subtest "Exchange on return callback"
+  (subtest "Exchange on return event"
     (with-connection ()
     (with-channel ()
       (let* ((x (exchange.default))
@@ -32,9 +32,9 @@
              (consumed)
              (returned))
 
-        (setf (exchange-on-return-callback x)
-              (lambda (returned-message)
-                (setf returned (message-body-string returned-message))))
+        (event+ (exchange-on-return x)
+                (lambda (returned-message)
+                  (setf returned (message-body-string returned-message))))
 
         (subscribe q (lambda (message)
                        (setf consumed (message-body-string message))))

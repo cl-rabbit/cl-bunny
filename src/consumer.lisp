@@ -17,12 +17,24 @@
    (tag :type string
         :initarg :tag
         :reader consumer-tag)
-   (lambda :type function
-      :initarg :lambda
-      :reader consumer-lambda)
+   ;; events
+   (on-message :type function
+               :initarg :on-message
+               :reader consumer-on-message)
    (on-cancel :type function
               :initarg :on-cancel
               :reader consumer-on-cancel)))
+
+(defclass sync-consumer-event (single-thread-sink serial-executor)
+  ())
+
+(defclass async-consumer-event (single-thread-sink pooled-executor)
+  ())
+
+(defun consumer-event-type (channel consumer-type)
+  (if (eq consumer-type :sync)
+      'sync-consumer-event
+      'async-consumer-event))
 
 (defmethod print-object ((consumer consumer) s)
   (print-unreadable-object (consumer s :type t :identity t)
@@ -45,14 +57,22 @@
              (loop for consumer in ,new-consumers do
                       (unsubscribe consumer))))))))
 
-(defun add-consumer (channel queue tag type lambda on-cancel)
+(defun add-consumer (channel queue tag type on-message on-cancel)
   (assert (null (gethash tag (channel-consumers channel))) (tag) 'channel-consumer-already-added channel tag)
   (let ((consumer (make-instance 'consumer :channel channel
                                            :queue queue
                                            :type type
                                            :tag tag
-                                           :lambda lambda
-                                           :on-cancel on-cancel)))
+                                           :on-message (make-instance (consumer-event-type
+                                                                       channel
+                                                                       type))
+                                           :on-cancel (make-instance (consumer-event-type
+                                                                      channel
+                                                                      type)))))
+    (when on-message
+      (event+ (consumer-on-message consumer) on-message))
+    (when on-cancel
+      (event+ (consumer-on-cancel consumer) on-cancel))
     (setf (gethash tag (channel-consumers channel)) consumer)))
 
 (defun remove-consumer (channel consumer-tag)
@@ -65,11 +85,8 @@
   (find-consumer channel (message-consumer-tag message)))
 
 (defun execute-consumer (consumer message)
-  (setf (slot-value message 'consumer) consumer)
-  (let ((result (funcall (consumer-lambda consumer) message)))
-    (when (eq :cancel result)
-      (unsubscribe consumer))
-    result))
+  (when (consumer-on-message consumer)
+    (event! (consumer-on-message consumer) message)))
 
 (defun dispatch-consumed-message (channel message)
   (if-let ((consumer (find-message-consumer channel message)))
@@ -84,7 +101,7 @@
     (progn
       (remove-consumer channel consumer)
       (when (consumer-on-cancel consumer)
-        (funcall (consumer-on-cancel consumer) consumer)))
+        (event! (consumer-on-cancel consumer) consumer)))
     (progn
       (log:error "Unknown consumer tag ~a." (amqp-method-field-consumer-tag basic-cancel))
       (unless *ignore-unknown-consumer-tags*
@@ -101,7 +118,7 @@
           (safe-queue:mailbox-receive-message mailbox :timeout timeout)
         (when message
           (etypecase message
-            (message (setf message (dispatch-consumed-message channel message)))
+            (message (dispatch-consumed-message channel message))
             (amqp-method-basic-cancel (dispatch-consumer-cancel channel message))
             (amqp-method-channel-close (error 'channel-closed-error :channel channel))
             (amqp-method-connection-close (error 'connection-closed-error :connection (channel-connection channel)))))
@@ -111,19 +128,13 @@
 ;; maybe just (let ((*channel* (consumer-channel consumer))) ... ) in execute-consumer?
 (defun wrap-async-subscribe-with-channel (fn channel)
   (lambda (message)
-    (maybe-execute-callback
-     (lambda (message)
-       (let ((*channel* channel))
-         (funcall fn message)))
-     message)))
+    (let ((*channel* channel))
+      (funcall fn message))))
 
 (defun wrap-async-on-cancel-with-channel (on-cancel channel)
   (lambda (consumer)
-    (maybe-execute-callback
-     (lambda (consumer)
-       (let ((*channel* channel))
-         (funcall on-cancel consumer)))
-     consumer)))
+    (let ((*channel* channel))
+      (funcall on-cancel consumer))))
 
 (defun subscribe (queue fn  &key (type :async) on-cancel consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
   (execute-in-connection-thread-sync ((channel-connection channel))
@@ -146,7 +157,7 @@
                           on-cancel))))))
 
 (defun subscribe-sync (queue &key on-cancel consumer-tag no-local no-ack exclusive arguments (channel *channel*))
-  (subscribe queue #'identity :type :sync
+  (subscribe queue nil :type :sync
                               :on-cancel on-cancel
                               :consumer-tag consumer-tag
                               :no-local no-local
@@ -167,9 +178,11 @@
 
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))
-    (if (eq :sync (consumer-type consumer))
-        (safe-queue:mailbox-send-message (channel-mailbox channel) message)
-        (execute-consumer consumer message))
+    (progn      
+      (setf (slot-value message 'consumer) consumer)
+      (if (eq :sync (consumer-type consumer))
+          (safe-queue:mailbox-send-message (channel-mailbox channel) message)
+          (execute-consumer consumer message)))
     (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
 
 (defmethod channel.receive (channel (method amqp-method-basic-deliver))
@@ -190,5 +203,5 @@
         (progn
           (remove-consumer channel consumer)
           (when (consumer-on-cancel consumer)
-            (maybe-execute-callback (consumer-on-cancel consumer) consumer))))
+            (event! (consumer-on-cancel consumer) consumer))))
     (log:error "Unknown consumer tag ~a." (amqp-method-field-consumer-tag method))))

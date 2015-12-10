@@ -20,6 +20,7 @@
                "lparallel"
                "safe-queue"
                "eventfd"
+               "cl-events"
                "log4cl")
   :components ((:module "src"
                 :serial t
@@ -32,7 +33,7 @@
                    (:file "int-allocator")
                    (:file "channel-id-allocator")
                    (:file "threaded-promise")
-                   (:file "callback-executor")))
+                   (:file "bunny-event")))
                  (:file "conditions")
                  (:file "properties-and-headers")
                  (:module "connection"

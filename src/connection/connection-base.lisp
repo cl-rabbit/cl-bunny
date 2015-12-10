@@ -17,11 +17,11 @@
    (pool-tag :initarg :pool-tag :accessor connection-pool-tag)
    (pool :initform nil :accessor connection-pool)
    (state :initform :closed :reader connection-state)
-   ;; callbacks
+   ;; events
    (on-close :type function
-             :initform nil
+             :initform (make-instance 'bunny-event)
              :initarg :on-close
-             :accessor connection-on-close-callback%)))
+             :accessor connection-on-close%)))
 
 (defgeneric connection-channel-max% (connection))
 
@@ -52,11 +52,8 @@
   (when (connection-open-p connection)
     connection))
 
-(defun connection-on-close-callback (&optional (connection *connection*))
-  (connection-on-close-callback% connection))
-
-(defun (setf connection-on-close-callback) (cb &optional (connection *connection*))
-  (setf (connection-on-close-callback% connection) cb))
+(defun connection-on-close (&optional (connection *connection*))
+  (connection-on-close% connection))
 
 (defgeneric connection.new% (connection-type spec pool-tag))
 

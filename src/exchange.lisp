@@ -20,9 +20,10 @@
              :reader exchange-internal-p)
    (arguments :initarg :arguments
               :reader exchange-arguments)
+   ;; events
    (on-return :type function
-              :initform nil
-              :accessor exchange-on-return-callback)))
+              :initform (make-instance 'bunny-event)
+              :accessor exchange-on-return)))
 
 (defmethod print-object ((exchange exchange) s)
   (print-unreadable-object (exchange s :type t :identity t)
@@ -143,9 +144,9 @@
                                                    :body (amqp-method-content method)
                                                    :properties (amqp-method-content-properties method)))
          (exchange (get-registered-exchange channel (message-exchange message)))
-         (callback (or (and exchange
-                            (exchange-on-return-callback exchange))
-                       (exchange-on-return-callback channel))))
-    (if callback
-        (maybe-execute-callback callback message)
+         (event (or (and exchange
+                         (exchange-on-return exchange))
+                    (channel-on-return channel))))
+    (if (and event (not (emptyp (event-handlers-list event))))
+        (event! event message)
         (log:warn "Got unhandled returned message"))))

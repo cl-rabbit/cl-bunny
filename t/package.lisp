@@ -4,6 +4,7 @@
   (:use :cl
         :alexandria
         :prove
+        :cl-events
         :cl-bunny)
   (:shadowing-import-from :prove
                           :*debug-on-error*))

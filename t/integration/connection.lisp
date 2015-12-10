@@ -110,8 +110,9 @@
   (subtest "Heartbeats help detect closed/aborted connections"
     (let ((closed))
         (with-connection ("amqp://" :heartbeat 6)
-          (setf (bunny:connection-on-close-callback) (lambda (connection)
-                                                       (setf closed connection)))
+          (event+ (connection-on-close)
+                  (lambda (connection)
+                    (setf closed connection)))
           (with-channel ()
             (sleep 3)
             (iolib.syscalls:close (cl-rabbit::get-sockfd (slot-value bunny:*connection* 'bunny::cl-rabbit-connection)))

@@ -1,5 +1,5 @@
 (defpackage :cl-bunny
-  (:use :cl :alexandria :eventfd :string-case :amqp)
+  (:use :cl :alexandria :eventfd :string-case :amqp :cl-events)
   (:nicknames :bunny)
   (:export #:with-connection
            #:with-channel
@@ -79,13 +79,14 @@
            #:connection-frame-max
            #:connection-heartbeat
            #:connection-server-properties
-           #:connection-on-close-callback
+           #:connection-on-close
 
            #:*channel*
            #:channel-id
            #:channel-connection
            #:channel-open-p
-           #:channel-on-error-callback
+           #:channel-on-error
+           #:channel-on-return
            #:channel.new
            #:channel.open
            #:channel.flow
@@ -99,7 +100,7 @@
            #:tx.commit
            #:tx.rollback
 
-           #:exchange-on-return-callback
+           #:exchange-on-return
 
            #:queue-name
            #:queue-server-named-p
@@ -142,5 +143,4 @@
 
            #:->
 
-           #:execute-callback
-           #:*callback-executor*))
+           #:*event-executor*))
