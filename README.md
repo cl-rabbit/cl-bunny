@@ -6,6 +6,8 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.c
 CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
 * [safe-queue](https://github.com/deadtrickster/safe-queue)
 * [eventfd](https://github.com/deadtrickster/eventfd)
+* [cl-amqp](https://github.com/cl-rabbit/cl-amqp)
+* [cl-events](https://github.com/deadtrickster/cl-events)
 
 While we are working hard to merge our `cl-rabbit` patches to the main repo
 please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1).<br>
