@@ -144,9 +144,18 @@
                                                    :body (amqp-method-content method)
                                                    :properties (amqp-method-content-properties method)))
          (exchange (get-registered-exchange channel (message-exchange message)))
-         (event (or (and exchange
-                         (exchange-on-return exchange))
-                    (channel-on-return channel))))
-    (if (and event (not (emptyp (event-handlers-list event))))
-        (event! event message)
-        (log:warn "Got unhandled returned message"))))
+         (ex-event (and exchange
+                        (exchange-on-return exchange)))
+         (ch-event (channel-on-return channel))
+         (unhandled t))
+
+    (when (and ch-event
+               (not (emptyp (event-handlers-list (channel-on-return% channel)))))
+      (setf unhandled nil)
+      (event! ch-event message))
+    (when (and ex-event
+               (not (emptyp (event-handlers-list (exchange-on-return exchange)))))
+      (setf unhandled nil)
+      (event! ex-event message))
+    (when unhandled
+      (log:warn "Got unhandled returned message"))))

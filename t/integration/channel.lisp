@@ -25,6 +25,24 @@
       (with-channel ()
         (channel.close 200 0 0))
       (with-channel ()))
-    (pass "Can quietly close closed channel")))
+    (pass "Can quietly close closed channel"))
+
+  (subtest "Channel on-return event"
+    (with-connection ()
+      (with-channel ()
+        (let ((x (exchange.default))
+              (returned))
+
+          (queue.declare-temp)
+
+          (event+ (channel-on-return)
+                  (lambda (returned-message)
+                    (setf returned returned-message)))
+
+          (publish x "This will be returned" :mandatory t :routing-key (format nil "wefvvtrw~a" (random 10)))
+
+          (sleep 1)
+          (isnt returned nil "Message returned")
+          (is (message-body-string returned) "This will be returned"))))))
 
 (finalize)
