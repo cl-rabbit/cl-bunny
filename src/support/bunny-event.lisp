@@ -3,7 +3,7 @@
 (defparameter *event-executor* nil)
 
 (defclass bunny-event (multi-thread-sink
-                pooled-executor)
+                       pooled-executor)
   ())
 
 (defmethod invoke-event-handlers ((event bunny-event) &rest args)

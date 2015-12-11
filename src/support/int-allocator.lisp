@@ -48,7 +48,7 @@
         (min (int-allocator-min int-allocator))
         (max (int-allocator-max int-allocator)))    
     (assert (and (>= allocated min) (<= allocated max)))
-  (int-allocator-unset% bits (- allocated min))))
+    (int-allocator-unset% bits (- allocated min))))
 
 (defun int-allocator-allocated-p (int-allocator value)
   (let ((bits (int-allocator-bits int-allocator))
