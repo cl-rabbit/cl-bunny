@@ -25,10 +25,6 @@
               :initform (make-instance 'bunny-event)
               :accessor exchange-on-return)))
 
-(defmethod print-object ((exchange exchange) s)
-  (print-unreadable-object (exchange s :type t :identity t)
-    (format s "~s" (exchange-name exchange))))
-
 (defmethod exchange-name ((exchange string))
   exchange)
 

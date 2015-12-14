@@ -51,4 +51,5 @@
                  (:file "consumer")
                  (:file "basic")
                  (:file "confirm")
-                 (:file "tx")))))
+                 (:file "tx")
+                 (:file "printer")))))
