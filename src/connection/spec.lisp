@@ -17,9 +17,11 @@
   (channel-max +channel-max+ :type (unsigned-byte 32))
   (frame-max +frame-max+ :type (unsigned-byte 32))
   (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32))
-  (tls-cert)
-  (tls-key)
-  (tls-ca))
+  (tls-cert nil :type (or null pathname string (nibbles:octet-vector)))
+  (tls-key nil :type (or null pathname string (nibbles:octet-vector)))
+  (tls-ca nil :type (or null pathname string (nibbles:octet-vector)))
+  (tls-verify-peer t :type boolean)
+  (tls-verify-hostname t :type boolean))
 
 (defun render-scheme (spec stream)
   (princ (if (connection-spec-use-tls-p spec)
@@ -66,6 +68,12 @@
             changeset))
     (when (not (= +heartbeat-interval+ (connection-spec-heartbeat-interval spec)))
       (push (cons "heartbeat-interval" (princ-to-string (connection-spec-heartbeat-interval spec)))
+            changeset))
+    (unless (connection-spec-tls-verify-peer spec)
+      (push (cons "tls-verify-peer" "false")
+            changeset))
+    (unless (connection-spec-tls-verify-hostname spec)
+      (push (cons "tls-verify-hostname" "false")
             changeset))
     (reverse changeset)))
 
@@ -152,11 +160,30 @@
           (error "Invalid parameter ~a value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
         value))))
 
+(defun parse-boolean (raw-value)
+  (string-case ((string-downcase raw-value))
+    ("t" (values t t))
+    ("nil" (values t nil))
+    ("true" (values t t))
+    ("false" (values t nil))))
+
+(defun check-boolean-parameter (params name default)
+  (let* ((raw-value (assoc-value params name :test #'string-equal)))
+    (if raw-value
+        (multiple-value-bind (parsed value)
+            (parse-boolean raw-value)
+          (unless parsed
+            (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+          value)
+      default)))
+
 (defmethod check-connection-parameters ((params string))
   (let ((decoded (quri:url-decode-params params)))
     (values (or (check-uint-parameter decoded "channel-max") +channel-max+)
             (or (check-uint-parameter decoded "frame-max") +frame-max+)
-            (or (check-uint-parameter decoded "heartbeat-interval") +heartbeat-interval+))))
+            (or (check-uint-parameter decoded "heartbeat-interval") +heartbeat-interval+)
+            (check-boolean-parameter decoded "tls-verify-peer" t)
+            (check-boolean-parameter decoded "tls-verify-hostname" t))))
 
 ;; see https://www.rabbitmq.com/uri-spec.html
 (defmethod make-connection-spec ((raw string))
@@ -168,7 +195,8 @@
           (credentials (check-connection-string-credentials userinfo))
           (vhost (check-connection-string-vhost path)))
       (multiple-value-bind (host ipv6) (check-connection-string-host host)
-        (multiple-value-bind (channel-max frame-max heartbeat-interval)
+        (multiple-value-bind (channel-max frame-max heartbeat-interval
+                              tls-verify-peer tls-verify-hostname)
             (check-connection-parameters query)
           (make-connection-spec% :use-tls-p use-tls
                                  :use-ipv6-p ipv6
@@ -179,7 +207,9 @@
                                  :password (second credentials)
                                  :channel-max channel-max
                                  :frame-max frame-max
-                                 :heartbeat-interval heartbeat-interval))))))
+                                 :heartbeat-interval heartbeat-interval
+                                 :tls-verify-peer tls-verify-peer
+                                 :tls-verify-hostname tls-verify-hostname))))))
 
 (defmethod make-connection-spec ((raw list))
   (apply #'make-connection-spec% raw))
