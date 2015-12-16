@@ -99,7 +99,16 @@
   (handler-case
       (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
         (setf cl-rabbit-connection (cl-rabbit:new-connection))
-        (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec))
+        (if (connection-spec-use-tls-p spec)
+            (let ((socket (cl-rabbit:ssl-socket-new cl-rabbit-connection)))
+              (cl-rabbit::ssl-socket-set-cacert socket (connection-spec-tls-ca spec))
+              (cl-rabbit::ssl-socket-set-key socket
+                                             (connection-spec-tls-cert spec)
+                                             (connection-spec-tls-key spec))
+              ;; (cl-rabbit::amqp-ssl-socket-set-verify-peer socket nil)
+              ;; (cl-rabbit::amqp-ssl-socket-set-verify-hostname socket nil)
+              (cl-rabbit:socket-open socket (connection-spec-host spec) (connection-spec-port spec)))
+            (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec)))
         (handler-bind ((cl-rabbit::rabbitmq-server-error
                          (lambda (error)
                            (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))

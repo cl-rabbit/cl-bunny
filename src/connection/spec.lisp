@@ -16,7 +16,10 @@
   (use-ipv6-p nil :type boolean)
   (channel-max +channel-max+ :type (unsigned-byte 32))
   (frame-max +frame-max+ :type (unsigned-byte 32))
-  (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32)))
+  (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32))
+  (tls-cert)
+  (tls-key)
+  (tls-ca))
 
 (defun render-scheme (spec stream)
   (princ (if (connection-spec-use-tls-p spec)
