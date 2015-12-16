@@ -60,7 +60,9 @@
 (defun connection.new (&optional (spec "amqp://") &key (heartbeat +heartbeat-interval+))
   (assert (or (positive-integer-p heartbeat)
               :default))
-  (let ((spec (make-connection-spec spec)))
+  (let ((spec (if (connection-spec-p spec)
+                  spec
+                  (make-connection-spec spec))))
     (unless (= heartbeat +heartbeat-interval+)
       (setf (connection-spec-heartbeat-interval spec) heartbeat))
     (connection.new% *connection-type* spec (with-output-to-string (s) (print-amqp-object spec s)))))
