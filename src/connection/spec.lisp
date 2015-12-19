@@ -148,7 +148,7 @@
 
 (defmethod check-connection-parameters ((params (eql nil)))
   (declare (ignore params))
-  (values +channel-max+ +frame-max+ +heartbeat-interval+))
+  (values +channel-max+ +frame-max+ +heartbeat-interval+ t t))
 
 (defun check-uint-parameter (params name)
   (let* ((raw-value (assoc-value params name :test #'string-equal)))
