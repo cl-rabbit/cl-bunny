@@ -12,9 +12,9 @@
     (subtest "check-connection-parameters"
       (is-error (bunny::check-connection-parameters "frame-max=wer") 'error)
       (is-error (bunny::check-connection-parameters "frame-max=-2") 'error)
-      (is-values (bunny::check-connection-parameters "frame-max=256") '(#.bunny::+channel-max+ 256 #.bunny::+heartbeat-interval+))
-      (is-values (bunny::check-connection-parameters "qwe=qwe&frame-max=256") '(#.bunny::+channel-max+ 256 #.bunny::+heartbeat-interval+))
-      (is-values (bunny::check-connection-parameters "heartbeat-interval=34&frame-max=256&channel-max=0") '(0 256 34))))
+      (is-values (bunny::check-connection-parameters "frame-max=256") '(#.bunny::+channel-max+ 256 #.bunny::+heartbeat-interval+ t t))
+      (is-values (bunny::check-connection-parameters "qwe=qwe&frame-max=256") '(#.bunny::+channel-max+ 256 #.bunny::+heartbeat-interval+ t t))
+      (is-values (bunny::check-connection-parameters "heartbeat-interval=34&frame-max=256&channel-max=0") '(0 256 34 t t))))
 
   (subtest "Connection string parser tests [without additional params]"
     ;; this should comply with https://www.rabbitmq.com/uri-spec.html
