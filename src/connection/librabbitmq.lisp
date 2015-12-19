@@ -101,12 +101,15 @@
         (setf cl-rabbit-connection (cl-rabbit:new-connection))
         (if (connection-spec-use-tls-p spec)
             (let ((socket (cl-rabbit:ssl-socket-new cl-rabbit-connection)))
-              (cl-rabbit::ssl-socket-set-cacert socket (connection-spec-tls-ca spec))
-              (cl-rabbit::ssl-socket-set-key socket
-                                             (connection-spec-tls-cert spec)
-                                             (connection-spec-tls-key spec))
-              ;; (cl-rabbit::amqp-ssl-socket-set-verify-peer socket nil)
-              ;; (cl-rabbit::amqp-ssl-socket-set-verify-hostname socket nil)
+              (when (connection-spec-tls-ca spec)
+                (cl-rabbit::ssl-socket-set-cacert socket (connection-spec-tls-ca spec)))
+              (when (and (connection-spec-tls-cert spec)
+                         (connection-spec-tls-key spec))
+                (cl-rabbit::ssl-socket-set-key socket
+                                               (connection-spec-tls-cert spec)
+                                               (connection-spec-tls-key spec)))
+              (cl-rabbit::amqp-ssl-socket-set-verify-peer socket (connection-spec-tls-verify-peer spec))
+              (cl-rabbit::amqp-ssl-socket-set-verify-hostname socket (connection-spec-tls-verify-hostname spec))
               (cl-rabbit:socket-open socket (connection-spec-host spec) (connection-spec-port spec)))
             (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec)))
         (handler-bind ((cl-rabbit::rabbitmq-server-error
