@@ -7,21 +7,6 @@
 
            #:*force-timeout*
 
-           #:message-channel
-           #:message-consumer-tag
-           #:message-consumer
-           #:message-delivery-tag
-           #:message-redelivered-p
-           #:message-exchange
-           #:message-routing-key
-           #:message-properties
-           #:message-body
-           #:message-body-string
-           #:message.ack
-           #:message.nack
-           #:message-header-value
-           #:message-property-value
-
            ;; conditions
            #:authentication-error
            #:error-connection
@@ -47,7 +32,18 @@
            #:message-app-id
            #:message-cluster-id
            #:message-header-value
-           #:header-value
+           #:message-channel
+           #:message-consumer-tag
+           #:message-consumer
+           #:message-delivery-tag
+           #:message-redelivered-p
+           #:message-exchange
+           #:message-routing-key
+           #:message-properties
+           #:message-body
+           #:message-body-string
+           #:message.ack
+           #:message.nack
 
            ;; connections pool
            #:*connections-pool*

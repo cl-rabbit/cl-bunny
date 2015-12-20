@@ -36,7 +36,7 @@
                      (let ((n (nibbles:sb64ref/be (message-body message) 0)))
                        (publish x
                                 (int64-to-octets (fibonacci n))
-                                :routing-key (alexandria::assoc-value (message-properties message) :reply-to)
-                                :properties `(:correlation-id ,(message-property-value message :correlation-id)))))
+                                :routing-key (message-reply-to message)
+                                :properties `(:correlation-id ,(message-correlation-id message)))))
                  :type :sync)
       (consume))))
