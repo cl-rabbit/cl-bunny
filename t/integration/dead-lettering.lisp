@@ -26,7 +26,7 @@
                    (let* ((message (queue.get dlq))
                           (ds (message-header-value message "x-death")))
                      (isnt ds nil)
-                     (is (header-value (aref ds 0) "reason") "rejected"))))
+                     (is (assoc-value (aref ds 0) "reason" :test 'equal) "rejected"))))
             (when dlx
               (exchange.delete dlx)))))))
 
