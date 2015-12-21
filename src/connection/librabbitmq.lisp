@@ -62,31 +62,6 @@
     (setup-execute-in-connection-lambda connection)
     connection))
 
-(defun parse-with-connection-params-list (params)
-  (if (keywordp (first params))
-      (append (list nil) params)
-      params))
-
-(defun parse-with-connection-params (params)
-  (etypecase params
-    (string (list params :shared nil))
-    (symbol (list params :shared nil))
-    (list (parse-with-connection-params-list params))))
-
-(defmacro with-connection (params &body body)
-  (destructuring-bind (spec &key shared (heartbeat 0)) (parse-with-connection-params params)
-    (with-gensyms (connection-spec-val shared-val)
-      `(let* ((,connection-spec-val ,spec)
-              (,shared-val ,shared)
-              (*connection* (if ,shared-val
-                                (connections-pool.find-or-run ,connection-spec-val)
-                                (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat)))))
-         (unwind-protect
-              (progn
-                ,@body)
-           (when (and (not ,shared-val))
-             (connection.close)))))))
-
 (defmethod connection.open% ((connection librabbitmq-connection))
   (connection-init connection)
   (setf (slot-value connection 'connection-thread)

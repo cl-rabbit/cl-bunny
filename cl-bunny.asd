@@ -40,8 +40,8 @@
                   :serial t
                   :components
                   ((:file "spec")
-                   (:file "connection-base")
                    (:file "pool")
+                   (:file "connection-base")
                    (:file "threaded-connection")
                    (:file "librabbitmq")
                    (:file "channel")))

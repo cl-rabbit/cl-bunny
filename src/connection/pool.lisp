@@ -1,5 +1,9 @@
 (in-package :cl-bunny)
 
+(defclass connection-in-pool ()
+  ((pool-tag :initarg :pool-tag :accessor connection-pool-tag)
+   (pool :initform nil :accessor connection-pool)))
+
 (defclass connections-pool-base ()
   ())
 
@@ -36,7 +40,7 @@
           pool)
     connection))
 
-(defmethod connections-pool.remove% ((pool eq-connections-pool) (connection connection))
+(defmethod connections-pool.remove% ((pool eq-connections-pool) (connection connection-in-pool))
   (assert (connection-pool connection) nil "Connection pool is nil") ;; TODO: specialize error
   (bt:with-recursive-lock-held ((connections-pool-lock (connection-pool connection)))
     (multiple-value-prog1
