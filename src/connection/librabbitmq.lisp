@@ -62,15 +62,7 @@
     (setup-execute-in-connection-lambda connection)
     connection))
 
-(defmethod connection.open% ((connection librabbitmq-connection))
-  (connection-init connection)
-  (setf (slot-value connection 'connection-thread)
-        (bt:make-thread (lambda () (connection-loop connection))
-                        :name (format nil "CL-BUNNY connection thread. Spec: ~a"
-                                      (connection-spec connection))))
-  connection)
-
-(defun connection-init (connection)
+(defmethod connection-init ((connection librabbitmq-connection))
   (handler-case
       (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
         (setf cl-rabbit-connection (cl-rabbit:new-connection))
@@ -286,7 +278,7 @@
        (process-unexpected-frame connection)
      exit)))
 
-(defun connection-loop (connection)
+(defmethod connection-loop ((connection librabbitmq-connection))
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
     (let ((ret)
           (last-server-activity (get-universal-time))

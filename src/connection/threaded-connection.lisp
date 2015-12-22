@@ -124,3 +124,14 @@
                        (t (log:error "Connection state is unknown"))))))
         (connection-closed-error () (log:debug "Closing already closed connection"))))
   t)
+
+(defgeneric connection-init (connection))
+(defgeneric connection-loop (connection))
+
+(defmethod connection.open% ((connection threaded-connection))
+  (connection-init connection)
+  (setf (slot-value connection 'connection-thread)
+        (bt:make-thread (lambda () (connection-loop connection))
+                        :name (format nil "CL-BUNNY connection thread. Spec: ~a"
+                                      (connection-spec connection))))
+  connection)
