@@ -115,7 +115,8 @@
   (log:error "Connection unblocked ~a" method))
 
 (defun parse-with-connection-params-list (params)
-  (if (keywordp (first params))
+  (if (and (keywordp (first params))
+           (evenp (length params)))
       (append (list nil) params)
       params))
 
