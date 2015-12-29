@@ -55,13 +55,13 @@
 
 (defgeneric connection.new% (connection-type spec pool-tag))
 
-(defun connection.new (&optional (spec "amqp://") &key (heartbeat +heartbeat-interval+))
+(defun connection.new (&optional (spec "amqp://") &key (heartbeat +heartbeat-interval+) pool-tag)
   (assert (or (positive-integer-p heartbeat)
               :default))
   (let ((spec (make-connection-spec spec)))
     (unless (= heartbeat +heartbeat-interval+)
       (setf (connection-spec-heartbeat-interval spec) heartbeat))
-    (connection.new% *connection-type* spec (with-output-to-string (s) (print-amqp-object spec s)))))
+    (connection.new% *connection-type* spec (or pool-tag (with-output-to-string (s) (print-amqp-object spec s))))))
 
 (defgeneric connection.open% (connection))
 
