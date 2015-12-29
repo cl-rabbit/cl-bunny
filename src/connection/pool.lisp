@@ -31,7 +31,9 @@
   (gethash spec (connections-pool-storage pool)))
 
 (defmethod connections-pool.add% ((pool eq-connections-pool) connection)
-  (assert (null (gethash (connection-pool-tag connection) (connections-pool-storage pool))) nil
+  (assert (or
+           (null (gethash (connection-pool-tag connection) (connections-pool-storage pool)))
+           (eq connection (gethash (connection-pool-tag connection) (connections-pool-storage pool)))) nil
           "Connection with spec ~a already added to pool ~a" connection pool) ;; TODO: specialize error
   (bt:with-recursive-lock-held ((connections-pool-lock pool))
     (setf (gethash (connection-pool-tag connection) (connections-pool-storage pool))
