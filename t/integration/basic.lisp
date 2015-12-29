@@ -91,6 +91,7 @@
                        string))))
           (test-send "Hello World!")
           (is (test-recv-sync) "Hello World!")
-          (connection.close))))))
+          (connection.close)))
+      (connections-pool.remove *connection*))))
 
 (finalize)
