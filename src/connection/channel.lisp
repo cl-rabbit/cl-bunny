@@ -50,6 +50,7 @@
 
 (defun channel.new (&key on-error (connection *connection*) (channel-id))
   (assert connection)
+  (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
   (assert (or (null channel-id) (and (positive-integer-p channel-id)
                                      (<= channel-id (connection-channel-max% connection)))))
   (with-read-lock (connection-state-lock connection)
@@ -119,11 +120,14 @@
     (setf (channel-open-p% channel) t)
     channel))
 
-(defun channel.new.open (&key on-error (connection *connection*) (channel-id (next-channel-id (connection-channel-id-allocator connection))))
+(defun channel.new.open (&key on-error (connection *connection*) (channel-id))
+  (assert connection)
+  (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
   ;; TODO: if open fails automatically generated channel-id should be released
   (channel.open (channel.new :on-error on-error
                              :connection connection
-                             :channel-id channel-id)))
+                             :channel-id (or channel-id
+                                             (next-channel-id (connection-channel-id-allocator connection))))))
 
 (defun channel.flow (active &key (channel *channel*))
   (channel.send% channel
