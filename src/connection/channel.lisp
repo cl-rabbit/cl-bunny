@@ -53,7 +53,8 @@
   (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
   (assert (or (null channel-id) (and (positive-integer-p channel-id)
                                      (<= channel-id (connection-channel-max% connection)))))
-  (with-read-lock (connection-state-lock connection)
+  ;; with-read-lock (connection-state-lock connection)
+  (execute-in-connection-thread-sync (connection)
     (if (connection-open-p connection)
         (let ((channel (make-instance 'channel :connection connection
                                                :id channel-id)))
@@ -73,7 +74,8 @@
   (:documentation "API Endpoint, hides transport implementation"))
 
 (defmethod channel.send :around (channel method)
-  (if (eq (bt:current-thread) (connection-thread (channel-connection channel)))
+  (if (or (not (typep (channel-connection channel) 'shared-connection))
+          (eq (bt:current-thread) (connection-thread (channel-connection channel))))
       ;; we are inside of connection thread, just return promise
       (call-next-method)
       ;; we are calling from different thread,

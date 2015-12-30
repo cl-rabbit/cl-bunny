@@ -10,3 +10,5 @@
                           :*debug-on-error*))
 
 (in-package :cl-bunny.test)
+
+(setf *connection-type* 'bunny::shared-librabbitmq-connection)

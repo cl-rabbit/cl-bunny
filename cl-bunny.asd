@@ -7,7 +7,7 @@
 
 (defsystem :cl-bunny
   :version "0.2.1"
-  :description "High-level interface for cl-rabbit"  
+  :description "High-level interface for cl-rabbit"
   :maintainer "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :author "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :licence "MIT"
@@ -42,7 +42,7 @@
                   ((:file "spec")
                    (:file "pool")
                    (:file "connection-base")
-                   (:file "threaded-connection")
+                   (:file "shared-connection")
                    (:file "librabbitmq")
                    (:file "channel")))
                  (:file "message")
