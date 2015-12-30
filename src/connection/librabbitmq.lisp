@@ -1,9 +1,12 @@
 (in-package :cl-bunny)
 
-(defclass librabbitmq-connection (threaded-connection)
+(defclass librabbitmq-connection (connection)
   ((cl-rabbit-connection :type cl-rabbit::connection
                          :initarg :connection
                          :reader connection-cl-rabbit-connection)))
+
+(defclass shared-librabbitmq-connection (librabbitmq-connection shared-connection)
+  ())
 
 (defmethod connection-channel-max% ((connection librabbitmq-connection))
   (cl-rabbit::amqp-get-channel-max (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))))
@@ -56,13 +59,50 @@
          :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
          :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))
 
-(defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec pool-tag)
-  (let ((connection (make-instance *connection-type* :spec spec
-                                                     :pool-tag pool-tag)))
+(defmethod connection.new% ((type (eql 'shared-librabbitmq-connection)) spec pool-tag)
+  (let ((connection (make-instance 'shared-librabbitmq-connection :spec spec
+                                                                  :pool-tag pool-tag)))
     (setup-execute-in-connection-lambda connection)
     connection))
 
-(defmethod connection-init ((connection librabbitmq-connection))
+(defmethod connection.new% ((type (eql 'librabbitmq-connection)) spec pool-tag)
+  (let ((connection (make-instance 'librabbitmq-connection :spec spec
+                                                           :pool-tag pool-tag)))
+    connection))
+
+(defmethod connection.close% ((connection librabbitmq-connection) timeout)
+  (log:debug "Stopping AMQP connection")
+  (setf (slot-value connection 'state) :closing)
+  (event! (connection-on-close% connection) connection)
+  (maphash (lambda (id channel)
+              (declare (ignorable id))
+              (setf (channel-open-p% channel) nil)
+              (safe-queue:mailbox-send-message (channel-mailbox channel)
+                                               (make-instance 'amqp-method-connection-close)))
+           (connection-channels connection))
+  (log:debug "closed-all-channels")
+  (setf (slot-value connection 'state) :closed)
+  (cl-rabbit:destroy-connection (connection-cl-rabbit-connection connection)))
+
+(defmethod connection.close% ((connection shared-librabbitmq-connection) timeout)
+  (if (eq (bt:current-thread) (connection-thread connection))
+      (progn (connection.send connection connection (make-instance 'amqp-method-connection-close :reply-code +amqp-reply-success+))
+             (throw 'stop-connection (values)))
+      (handler-case
+          (progn (execute-in-connection-thread (connection)
+                   (connection.close% connection timeout))
+                 (handler-case
+                     (sb-thread:join-thread (connection-thread connection) :timeout timeout)
+                   (sb-thread:join-thread-error (e)
+                     (case (sb-thread::join-thread-problem e)
+                       (:timeout (log:error "Connection thread stalled?")
+                        (sb-thread:terminate-thread (connection-thread connection)))
+                       (:abort (log:error "Connection thread aborted"))
+                       (t (log:error "Connection state is unknown"))))))
+        (connection-closed-error () (log:debug "Closing already closed connection"))))
+  t)
+
+(defmethod connection.init ((connection librabbitmq-connection))
   (handler-case
       (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
         (setf cl-rabbit-connection (cl-rabbit:new-connection))
@@ -81,8 +121,71 @@
             (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec)))
         (handler-bind ((cl-rabbit::rabbitmq-server-error
                          (lambda (error)
-                           (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
-                             (error 'authentication-error :connection connection)))))
+                            (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
+                              (error 'authentication-error :connection connection)))))
+          (cl-rabbit:login-sasl-plain cl-rabbit-connection
+                                      (connection-spec-vhost spec)
+                                      (connection-spec-login spec)
+                                      (connection-spec-password spec)
+                                      :heartbeat (connection-spec-heartbeat-interval spec)
+                                      :channel-max (connection-spec-channel-max spec)
+                                      :frame-max (connection-spec-frame-max spec)
+                                      :properties '(("product" . "cl-bunny(cl-rabbit transport)")
+                                                    ("version" . "0.1")
+                                                    ("copyright" . "Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and CONTRIBUTORS <https://github.com/cl-rabbit/cl-bunny/blob/master/CONTRIBUTORS.md>")
+                                                    ("information" . "see https://github.com/cl-rabbit/cl-bunny")
+                                                    ("capabilities" . (("connection.blocked" . nil)
+                                                                       ("publisher_confirms" . t)
+                                                                       ("consumer_cancel_notify" . t)
+                                                                       ("exchange_exchange_bindings" . t)
+                                                                       ("basic.nack" . t)
+                                                                       ("authentication_failure_close" . t)))))
+
+          (setf (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
+                (slot-value connection 'state) :open)))
+    (cl-rabbit:rabbitmq-server-error (e)
+      (error (translate-rabbitmq-server-error e connection nil)))
+    (cl-rabbit:rabbitmq-library-error (e)
+      (error (librabbitmq-error->transport-error e)))))
+
+(defmethod connection.consume% ((connection librabbitmq-connection) timeout one-shot)
+  (with-slots (cl-rabbit-connection event-base) connection
+    (loop
+      (block continue
+        (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
+        (unless (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
+                    (cl-rabbit::frames-enqueued cl-rabbit-connection))
+          (handler-case
+              (iolib:wait-until-fd-ready (cl-rabbit::get-sockfd cl-rabbit-connection)
+                                         :input timeout t)
+            (iolib:poll-timeout () (if one-shot
+                                       (return (values nil nil))
+                                       (return-from continue)))))
+        (let ((ret (wait-for-frame connection)))
+          (when one-shot
+            (return (values ret t))))))))
+
+(defmethod connection.init ((connection shared-librabbitmq-connection))
+  (handler-case
+      (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
+        (setf cl-rabbit-connection (cl-rabbit:new-connection))
+        (if (connection-spec-use-tls-p spec)
+            (let ((socket (cl-rabbit:ssl-socket-new cl-rabbit-connection)))
+              (when (connection-spec-tls-ca spec)
+                (cl-rabbit::ssl-socket-set-cacert socket (connection-spec-tls-ca spec)))
+              (when (and (connection-spec-tls-cert spec)
+                         (connection-spec-tls-key spec))
+                (cl-rabbit::ssl-socket-set-key socket
+                                               (connection-spec-tls-cert spec)
+                                               (connection-spec-tls-key spec)))
+              (cl-rabbit::amqp-ssl-socket-set-verify-peer socket (connection-spec-tls-verify-peer spec))
+              (cl-rabbit::amqp-ssl-socket-set-verify-hostname socket (connection-spec-tls-verify-hostname spec))
+              (cl-rabbit:socket-open socket (connection-spec-host spec) (connection-spec-port spec)))
+            (cl-rabbit:socket-open (cl-rabbit:tcp-socket-new cl-rabbit-connection) (connection-spec-host spec) (connection-spec-port spec)))
+        (handler-bind ((cl-rabbit::rabbitmq-server-error
+                         (lambda (error)
+                            (when (= 403 (cl-rabbit:rabbitmq-server-error/reply-code error))
+                              (error 'authentication-error :connection connection)))))
           (cl-rabbit:login-sasl-plain cl-rabbit-connection
                                       (connection-spec-vhost spec)
                                       (connection-spec-login spec)
@@ -247,19 +350,19 @@
     (tagbody
        (handler-bind ((cl-rabbit:rabbitmq-library-error
                         (lambda (condition)
-                          (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
-                                    :amqp-status-unexpected-state)
-                            (go unexpected-frame))
-                          ;; why is that?
-                          ;; when heartbeats enabled wait-for-frame called from event-base loop callback
-                          ;; when server heartbeat arrives (i.e. socket available for reading)
-                          ;; and consume-message/wait_frame_inner? returns AMQP-STATUS-TIMEOUT
-                          ;; also, this happens no matter what supplied as :timout to consume-message
-                          (when (and
-                                 (not (= 0 (connection-heartbeat connection)))
-                                 (eq (cl-rabbit::rabbitmq-library-error/error-code condition)
-                                     :amqp-status-timeout))
-                            (go exit)))))
+                           (when (eq (cl-rabbit:rabbitmq-library-error/error-code condition)
+                                     :amqp-status-unexpected-state)
+                             (go unexpected-frame))
+                           ;; why is that?
+                           ;; when heartbeats enabled wait-for-frame called from event-base loop callback
+                           ;; when server heartbeat arrives (i.e. socket available for reading)
+                           ;; and consume-message/wait_frame_inner? returns AMQP-STATUS-TIMEOUT
+                           ;; also, this happens no matter what supplied as :timout to consume-message
+                           (when (and
+                                  (not (= 0 (connection-heartbeat connection)))
+                                  (eq (cl-rabbit::rabbitmq-library-error/error-code condition)
+                                      :amqp-status-timeout))
+                             (go exit)))))
          ;;
          (let ((envelope (cl-rabbit:consume-message cl-rabbit-connection :timeout 0)))
            (let* ((channel-id (cl-rabbit:envelope/channel envelope)))
@@ -267,7 +370,7 @@
                         (log:warn "Message received for closed channel: ~a" channel-id)))
                (if-let ((channel (gethash channel-id channels)))
                  (if (channel-open-p% channel)
-                     (channel.receive channel (create-deliver-method-from-cl-rabbit-envelope envelope))
+                     (return-from wait-for-frame (channel.receive channel (create-deliver-method-from-cl-rabbit-envelope envelope)))
                      ;; ELSE: We won't deliver messages to a closed channel
                      (log:warn "Incoming message on closed channel: ~s" channel))
                  ;; ELSE: Unused channel
@@ -288,64 +391,64 @@
                  (catch 'stop-connection
                    (handler-bind ((cl-rabbit:rabbitmq-library-error
                                     (lambda (e)
-                                      (let ((actual-error (librabbitmq-error->transport-error e)))
-                                        (log:error "Unhandled transport error: ~a" actual-error)
-                                        (unless *debug-connection*
-                                            (throw 'stop-connection actual-error)))))
+                                       (let ((actual-error (librabbitmq-error->transport-error e)))
+                                         (log:error "Unhandled transport error: ~a" actual-error)
+                                         (unless *debug-connection*
+                                           (throw 'stop-connection actual-error)))))
                                   (error
                                     (lambda (e)
-                                      (log:error "Unhandled unknown error: ~a" e)
-                                      (unless *debug-connection*
-                                        (throw 'stop-connection e)))))
+                                       (log:error "Unhandled unknown error: ~a" e)
+                                       (unless *debug-connection*
+                                         (throw 'stop-connection e)))))
                      (iolib:with-event-base (event-base)
                        (iolib:set-io-handler event-base
                                              control-fd
                                              :read (lambda (fd e ex)
-                                                     (declare (ignorable fd e ex))
-                                                     (eventfd.read control-fd)
-                                                     (log:debug "Got lambda to execute on connection thread")
-                                                     ;; last-client-acitivity probably should be also updated there
-                                                     ;; but it's not required for lambda to do any networking
-                                                     (loop for lambda = (safe-queue:dequeue control-mailbox)
-                                                           while lambda
-                                                           do (funcall lambda))))
+                                                      (declare (ignorable fd e ex))
+                                                      (eventfd.read control-fd)
+                                                      (log:debug "Got lambda to execute on connection thread")
+                                                      ;; last-client-acitivity probably should be also updated there
+                                                      ;; but it's not required for lambda to do any networking
+                                                      (loop for lambda = (safe-queue:dequeue control-mailbox)
+                                                            while lambda
+                                                            do (funcall lambda))))
                        (iolib:set-io-handler event-base
                                              (cl-rabbit::get-sockfd cl-rabbit-connection)
                                              :read (lambda (fd e ex)
-                                                     (declare (ignorable fd e ex))
-                                                     (when ex
-                                                       (throw 'stop-connection nil))
-                                                     ;; something to be read on the socket
-                                                     ;;  wait_frame_inner should send heartbeat
-                                                     ;; actually last-activity not only shows when last hearbeat
-                                                     ;; sent to the server but also when we received something from the
-                                                     ;; server last time
-                                                     ;; TODO: what if server quiet for more than 2 heartbeats intervals
-                                                     (setf last-server-activity (get-universal-time)) ;; TODO: monotonic time?
-                                                     ;; setting this here because as already said wait_frame_inner will send hearbeat
-                                                     ;; but also it will throw an error if something badly wrong
-                                                     (setf last-client-activity (get-universal-time)) ;; TODO: monotonic time?
-                                                     (wait-for-frame connection)))
+                                                      (declare (ignorable fd e ex))
+                                                      (when ex
+                                                        (throw 'stop-connection nil))
+                                                      ;; something to be read on the socket
+                                                      ;;  wait_frame_inner should send heartbeat
+                                                      ;; actually last-activity not only shows when last hearbeat
+                                                      ;; sent to the server but also when we received something from the
+                                                      ;; server last time
+                                                      ;; TODO: what if server quiet for more than 2 heartbeats intervals
+                                                      (setf last-server-activity (get-universal-time)) ;; TODO: monotonic time?
+                                                      ;; setting this here because as already said wait_frame_inner will send hearbeat
+                                                      ;; but also it will throw an error if something badly wrong
+                                                      (setf last-client-activity (get-universal-time)) ;; TODO: monotonic time?
+                                                      (wait-for-frame connection)))
                        ;; on one hand this isn't needed: wait_frame_inner should send heartbeat anyway
                        ;; however wait_frame_inner only responds
                        ;; what if server gone?
                        (unless (= 0 (connection-heartbeat connection))
                          (iolib:add-timer event-base
                                           (lambda ()
-                                            (let ((now (get-universal-time)))  ;; TODO: monotonic time?
-                                              (cond
-                                                ((> (/ (- now last-server-activity) (connection-heartbeat% connection))
-                                                    2)
-                                                 (throw 'stop-connection 'transport-error))
-                                                ((> now (+ last-client-activity (connection-heartbeat% connection)))
-                                                 (log:debug "Sending HEARTBEAT")
-                                                 ;; btw send_frame_inner should update send_heartbeat deadline
-                                                 (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
-                                                   (setf (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel) 0
-                                                         (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type) +amqp-frame-heartbeat+)
-                                                   (cl-rabbit::verify-status (cl-rabbit::amqp-send-frame (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))
-                                                                                                         frame))
-                                                   (setf last-client-activity (get-universal-time)))))))
+                                             (let ((now (get-universal-time)))  ;; TODO: monotonic time?
+                                               (cond
+                                                 ((> (/ (- now last-server-activity) (connection-heartbeat% connection))
+                                                     2)
+                                                  (throw 'stop-connection 'transport-error))
+                                                 ((> now (+ last-client-activity (connection-heartbeat% connection)))
+                                                  (log:debug "Sending HEARTBEAT")
+                                                  ;; btw send_frame_inner should update send_heartbeat deadline
+                                                  (cffi:with-foreign-objects ((frame '(:struct cl-rabbit::amqp-frame-t)))
+                                                    (setf (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::channel) 0
+                                                          (cffi:foreign-slot-value frame '(:struct cl-rabbit::amqp-frame-t) 'cl-rabbit::frame-type) +amqp-frame-heartbeat+)
+                                                    (cl-rabbit::verify-status (cl-rabbit::amqp-send-frame (cl-rabbit::connection/native-connection (connection-cl-rabbit-connection connection))
+                                                                                                          frame))
+                                                    (setf last-client-activity (get-universal-time)))))))
                                           (+ 0.4 (/ (connection-heartbeat% connection) 2))))
                        (loop
                          if (or (cl-rabbit::data-in-buffer cl-rabbit-connection)
@@ -361,10 +464,10 @@
           (when (connection-pool connection)
             (connections-pool.remove connection))
           (maphash (lambda (id channel)
-                     (declare (ignorable id))
-                     (setf (channel-open-p% channel) nil)
-                     (safe-queue:mailbox-send-message (channel-mailbox channel)
-                                                      (make-instance 'amqp-method-connection-close)))
+                      (declare (ignorable id))
+                      (setf (channel-open-p% channel) nil)
+                      (safe-queue:mailbox-send-message (channel-mailbox channel)
+                                                       (make-instance 'amqp-method-connection-close)))
                    (connection-channels connection))
           (log:debug "closed-all-channels")
           ;; drain control mailbox

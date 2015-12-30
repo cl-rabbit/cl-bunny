@@ -3,7 +3,7 @@
 (defvar *connection* nil
   "Current AMQP connection")
 
-(defparameter *connection-type* 'librabbitmq-connection)
+(defparameter *connection-type* nil)
 
 (defparameter *debug-connection* nil)
 
@@ -15,6 +15,7 @@
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
    (state :initform :closed :reader connection-state)
+   (event-base :reader connection-event-base :initarg :event-base)
    ;; events
    (on-close :type function
              :initform (make-instance 'bunny-event)
@@ -41,7 +42,9 @@
 (defun connection-server-properties (&optional (connection *connection*))
   (connection-server-properties% connection))
 
-(defgeneric connection-open-p% (connection))
+(defgeneric connection-open-p% (connection)
+  (:method ((connection connection))
+    (eq (connection-state connection) :open)))
 
 (defun connection-open-p (&optional (connection *connection*))
   (connection-open-p% connection))
@@ -53,6 +56,12 @@
 (defun connection-on-close (&optional (connection *connection*))
   (connection-on-close% connection))
 
+(defun get-connection-type (spec)
+  (or *connection-type*
+      (if (= 0 (connection-spec-heartbeat-interval spec))
+          'librabbitmq-connection
+          'shared-librabbitmq-connection)))
+
 (defgeneric connection.new% (connection-type spec pool-tag))
 
 (defun connection.new (&optional (spec "amqp://") &key (heartbeat +heartbeat-interval+) pool-tag)
@@ -61,9 +70,12 @@
   (let ((spec (make-connection-spec spec)))
     (unless (= heartbeat +heartbeat-interval+)
       (setf (connection-spec-heartbeat-interval spec) heartbeat))
-    (connection.new% *connection-type* spec (or pool-tag (with-output-to-string (s) (print-amqp-object spec s))))))
+    (connection.new% (get-connection-type spec) spec (or pool-tag (with-output-to-string (s) (print-amqp-object spec s))))))
 
-(defgeneric connection.open% (connection))
+(defgeneric connection.open% (connection)
+  (:method ((connection connection))
+    (connection.init connection)
+    connection))
 
 (defun connection.open (&optional (connection *connection*))
   (connection.open% connection))
@@ -127,15 +139,25 @@
     (list (parse-with-connection-params-list params))))
 
 (defmacro with-connection (params &body body)
-  (destructuring-bind (spec &key shared (heartbeat 0)) (parse-with-connection-params params)
+  (destructuring-bind (spec &key shared (heartbeat 0) (type '*connection-type*)) (parse-with-connection-params params)
     (with-gensyms (connection-spec-val shared-val)
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
-              (*connection* (if ,shared-val
-                                (connections-pool.find-or-run ,connection-spec-val)
-                                (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat)))))
+              (*connection* (let ((*connection-type* (or ,type
+                                                         (if ,shared-val 'shared-librabbitmq-connection
+                                                             'librabbitmq-connection))))
+                              (if ,shared-val
+                                  (connections-pool.find-or-run ,connection-spec-val)
+                                  (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat))))))
          (unwind-protect
               (progn
                 ,@body)
            (when (and (not ,shared-val))
              (connection.close)))))))
+
+(defgeneric connection.consume% (connection timeout one-shot))
+
+(defun connection.consume (&key (connection *connection*) (timeout 1) one-shot)
+  (assert connection)
+  (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
+  (connection.consume% connection timeout one-shot))

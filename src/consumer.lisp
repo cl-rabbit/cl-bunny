@@ -174,12 +174,16 @@
 
 (defun channel-consume-message (channel message &key return)
   (if-let ((consumer (find-message-consumer channel message)))
-    (progn      
+    (progn
       (setf (slot-value message 'consumer) consumer)
       (if (eq :sync (consumer-type consumer))
-          (safe-queue:mailbox-send-message (channel-mailbox channel) message)
+          (if (typep (channel-connection channel) 'shared-connection)
+              (safe-queue:mailbox-send-message (channel-mailbox channel) message)
+              (let ((*event-executor* 'cl-events:serial-executor))
+                (execute-consumer consumer message)))
           (execute-consumer consumer message)))
-    (log:error "Unknown consumer tag ~a." (message-consumer-tag message))))
+    (log:error "Unknown consumer tag ~a." (message-consumer-tag message)))
+  message)
 
 (defmethod channel.receive (channel (method amqp-method-basic-deliver))
   (channel-consume-message channel (make-instance 'message

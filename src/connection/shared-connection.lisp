@@ -50,15 +50,14 @@
             (progn ,@body)
          (write-lock-end ,rwlock%)))))
 
-(defclass threaded-connection (connection)
-  ((event-base :reader connection-event-base :initarg :event-base)
-   (control-fd)
+(defclass shared-connection (connection)
+  ((control-fd)
    (control-mailbox :reader connection-control-mailbox)
    (state-lock :initform (make-connection-state-lock) :reader connection-state-lock)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
    (connection-thread :reader connection-thread)))
 
-(defmethod connection-open-p% ((connection threaded-connection))
+(defmethod connection-open-p% ((connection shared-connection))
   (and connection
        (slot-boundp connection 'connection-thread)
        (bt:thread-alive-p (connection-thread connection))
@@ -87,49 +86,34 @@
            (,connection% ,connection)
            (,error))
        (if (connection-open-p ,connection%)
-           (bt:with-lock-held (,lock)
-             (funcall (connection-lambda ,connection%)
-                      (lambda (&aux (*connection* ,connection%))
-                        (bt:with-lock-held (,lock)
-                          (handler-case
-                              (setf ,return
-                                    (multiple-value-list
-                                     (unwind-protect
-                                          (progn
-                                            ,@body)
-                                       (bt:condition-notify ,condition))))
-                            (cl-rabbit::rabbitmq-server-error (e)
-                              (log:error "Server error: ~a" e)
-                              (setf ,error e))))))
-             (bt:condition-wait ,condition ,lock)
-             (if ,error
-                 (error ,error)
-                 (values-list ,return)))
+           (if (or (not (typep ,connection% 'shared-connection))
+                   (eq (bt:current-thread) (connection-thread ,connection%)))
+               ,@body
+               (bt:with-lock-held (,lock)
+                 (funcall (connection-lambda ,connection%)
+                          (lambda (&aux (*connection* ,connection%))
+                             (bt:with-lock-held (,lock)
+                               (handler-case
+                                   (setf ,return
+                                         (multiple-value-list
+                                          (unwind-protect
+                                               (progn
+                                                 ,@body)
+                                            (bt:condition-notify ,condition))))
+                                 (cl-rabbit::rabbitmq-server-error (e)
+                                   (log:error "Server error: ~a" e)
+                                   (setf ,error e))))))
+                 (bt:condition-wait ,condition ,lock)
+                 (if ,error
+                     (error ,error)
+                     (values-list ,return))))
            (error 'connection-closed-error :connection ,connection%)))))
-
-(defmethod connection.close% ((connection threaded-connection) timeout)
-  (if (eq (bt:current-thread) (connection-thread connection))
-      (progn (connection.send connection connection (make-instance 'amqp-method-connection-close :reply-code +amqp-reply-success+))
-             (throw 'stop-connection (values)))
-      (handler-case
-          (progn (execute-in-connection-thread (connection)
-                   (connection.close% connection timeout))
-                 (handler-case
-                     (sb-thread:join-thread (connection-thread connection) :timeout timeout)
-                   (sb-thread:join-thread-error (e)
-                     (case (sb-thread::join-thread-problem e)
-                       (:timeout (log:error "Connection thread stalled?")
-                        (sb-thread:terminate-thread (connection-thread connection)))
-                       (:abort (log:error "Connection thread aborted"))
-                       (t (log:error "Connection state is unknown"))))))
-        (connection-closed-error () (log:debug "Closing already closed connection"))))
-  t)
 
 (defgeneric connection-init (connection))
 (defgeneric connection-loop (connection))
 
-(defmethod connection.open% ((connection threaded-connection))
-  (connection-init connection)
+(defmethod connection.open% ((connection shared-connection))
+  (connection.init connection)
   (setf (slot-value connection 'connection-thread)
         (bt:make-thread (lambda () (connection-loop connection))
                         :name (format nil "CL-BUNNY connection thread. Spec: ~a"

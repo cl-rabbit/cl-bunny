@@ -55,9 +55,11 @@
            #:connections-pool.find-or-run
 
            #:*connection*
+           #:*connection-type*
            #:connection.new
            #:connection.open
            #:connection.close
+           #:connection.consume
 
            #:connection-spec
            #:connection-spec-login
