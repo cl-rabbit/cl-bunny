@@ -13,7 +13,8 @@
 
   (with-connection ()
     (with-channel ()
-      (is-error (channel.open) 'amqp:amqp-error-command-invalid "Can't open already opened channel")))
+      ;; note on error type: it should be channel-error but old rabbitmq versios return command-invalid
+      (is-error (channel.open) 'amqp:amqp-connection-error "Can't open already opened channel")))
 
   (with-connection ()
     (with-channel ()

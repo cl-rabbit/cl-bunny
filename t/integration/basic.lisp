@@ -4,6 +4,41 @@
 
 (subtest "Basic publish/consume test"
 
+  (subtest "Same-thread connection"
+    (subtest "Async consumer"
+      (let ((text))
+        (with-connection ("amqp://" :type 'bunny::librabbitmq-connection)
+          (with-channel ()
+            (let ((x (exchange.default))
+                  (q "cl-bunny.examples.hello-world"))
+
+              (queue.declare :name q :auto-delete t)
+              (with-consumers
+                  ((q
+                    (lambda (message)
+                      (setf text (message-body-string message)))))
+                (publish x "Hello world!" :routing-key q)
+                (is (message-body-string (connection.consume :one-shot t)) "Hello world!")
+                (sleep 0.5)
+                (is text "Hello world!")))))))
+    
+    (subtest "Sync consumer"
+      (let ((text))
+        (with-connection ("amqp://" :type 'bunny::librabbitmq-connection)
+          (with-channel ()
+            (let ((x (exchange.default))
+                  (q "cl-bunny.examples.hello-world"))
+
+              (queue.declare :name q :auto-delete t)
+              (with-consumers
+                  ((q
+                    (lambda (message)
+                      (setf text (message-body-string message)))
+                    :type :sync))
+                (publish x "Hello world!" :routing-key q)
+                (is (message-body-string (connection.consume :one-shot t)) "Hello world!")
+                (is text "Hello world!"))))))))
+
   (subtest "Sync with-consumers"
     (with-connection ()
       (let ((queue))
