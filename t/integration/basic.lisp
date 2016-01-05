@@ -21,7 +21,7 @@
                 (is (message-body-string (connection.consume :one-shot t)) "Hello world!")
                 (sleep 0.5)
                 (is text "Hello world!")))))))
-    
+
     (subtest "Sync consumer"
       (let ((text))
         (with-connection ("amqp://" :type 'bunny::librabbitmq-connection)
@@ -126,6 +126,47 @@
                        string))))
           (test-send "Hello World!")
           (is (test-recv-sync) "Hello World!")
-          (connection.close))))))
+          (connection.close)))))
+
+  (subtest "Using shared connection from non-blocking thread"
+    (with-connection ()
+      (with-channel ()
+        (let* ((control-fd (eventfd:eventfd.new 0))
+               (control-mailbox (safe-queue:make-queue))
+               (notify-lambda (lambda (thunk)
+                                (safe-queue:enqueue thunk control-mailbox)
+                                (eventfd:eventfd.notify-1 control-fd)))
+               (*notification-lambda* notify-lambda)
+               (x)
+               (message))
+          (funcall notify-lambda (lambda ()
+                                   (bb:alet ((x (bunny:exchange.declare "hmm2" :auto-delete t))
+                                             (q (bunny:queue.declare-temp))
+                                             (text "Hello World!"))
+                                     (bb:chain
+                                         (bunny:queue.bind q x :routing-key q)
+                                       (:then () (bunny:subscribe-sync q))
+                                       (:then () (bunny:publish x text :routing-key q :properties '(:content-type "text/plain")))
+                                       (:then () (bunny:consume :one-shot t))
+                                       (:then (m) (setf message (message-body-string m)))
+                                       (:then () (queue.unbind q x))
+                                       (:then () (exchange.delete x))
+                                       (:finally () (throw 'stop nil))))))
+          (funcall notify-lambda (lambda () (setf x 1)))
+          (unwind-protect
+               (catch 'stop
+                 (iolib:with-event-base (ev)
+                   (iolib:set-io-handler ev control-fd
+                                         :read (lambda (fd e ex)
+                                                 (declare (ignorable fd e ex))
+                                                 (eventfd:eventfd.read control-fd)
+                                                 (log:debug "Got lambda to execute on connection thread")
+                                                 (loop for lambda = (safe-queue:dequeue control-mailbox)
+                                                       while lambda
+                                                       do (funcall lambda))))
+                   (iolib:event-dispatch ev)))
+            (eventfd:eventfd.close control-fd)
+            (is x 1 "Event loop iterated more than once")
+            (is message "Hello World!" "Message consumed")))))))
 
 (finalize)
