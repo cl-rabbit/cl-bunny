@@ -25,6 +25,9 @@
               :initform (make-instance 'bunny-event)
               :accessor exchange-on-return)))
 
+(defmethod exchange-type ((exchange string))
+  nil)
+
 (defmethod exchange-name ((exchange string))
   exchange)
 

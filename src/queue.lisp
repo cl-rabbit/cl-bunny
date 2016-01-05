@@ -71,12 +71,15 @@
                  :arguments arguments
                  :channel channel))
 
-(defun queue.bind (queue exchange &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))
+(defun queue.bind (queue exchange &key (routing-key "" routing-key-supplied-p) (nowait nil) (arguments nil) (channel *channel*))
   (channel.send% channel
                  (make-instance 'amqp-method-queue-bind
                    :queue (queue-name queue)
                    :exchange (exchange-name exchange)
-                   :routing-key routing-key
+                   :routing-key (if (and (equal "direct" (exchange-type exchange))
+                                         (not routing-key-supplied-p))
+                                    (queue-name queue)
+                                    (queue-name routing-key))
                    :nowait nowait
                    :arguments arguments)
     queue))
