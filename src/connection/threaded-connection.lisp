@@ -92,8 +92,9 @@
 (defmethod execute-on-connection-thread ((connection threaded-connection) channel lambda)
   (if (eq (bt:current-thread) (connection-thread connection))
       (call-next-method)
-      (with-read-lock (connection-state-lock connection)
-        (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
+      (progn
+        (with-read-lock (connection-state-lock connection)
+          (assert (connection-open-p connection) () 'connection-closed-error :connection connection))
         (let ((promise (threaded-promise)))
           (execute-in-connection-thread (connection)
             (handler-case
