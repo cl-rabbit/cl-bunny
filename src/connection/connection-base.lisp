@@ -3,7 +3,8 @@
 (defvar *connection* nil
   "Current AMQP connection")
 
-(defparameter *connection-type* nil)
+(defparameter *connection-type* 'threaded-librabbitmq-connection)
+(defparameter *notification-lambda* nil)
 
 (defparameter *debug-connection* nil)
 
