@@ -21,7 +21,7 @@
         (sleep 1)
         (is-error (bunny:consume) 'channel-closed-error))))
 
-  (subtest "Consume should signal connection-closed-error"
+  (subtest "Consume should signal channel-closed-error when connection closed"
     (with-connection ()
       (with-channel ()
         (bunny:subscribe-sync (queue.declare-temp))
@@ -30,7 +30,7 @@
                                    (sleep 5)
                                    (connection.close :connection connection)))
                                :arguments (list *connection*))
-        (sleep 1)
-        (is-error (bunny:consume) 'connection-closed-error)))))
+        (sleep 2)
+        (is-error (bunny:consume) 'channel-closed-error)))))
 
 (finalize)

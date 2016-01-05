@@ -140,7 +140,7 @@
                (x)
                (message))
           (funcall notify-lambda (lambda ()
-                                   (bb:alet ((x (bunny:exchange.declare "hmm2" :auto-delete t))
+                                   (bb:alet ((x (bunny:exchange.declare "hmm2"))
                                              (q (bunny:queue.declare-temp))
                                              (text "Hello World!"))
                                      (bb:chain
