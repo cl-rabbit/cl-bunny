@@ -21,6 +21,7 @@
                "safe-queue"
                "eventfd"
                "cl-events"
+               "blackbird"
                "log4cl")
   :components ((:module "src"
                 :serial t
