@@ -177,7 +177,7 @@
     (progn
       (setf (slot-value message 'consumer) consumer)
       (if (eq :sync (consumer-type consumer))
-          (if (typep (channel-connection channel) 'shared-connection)
+          (if (typep (channel-connection channel) 'threaded-connection)
               (safe-queue:mailbox-send-message (channel-mailbox channel) message)
               (let ((*event-executor* 'cl-events:serial-executor))
                 (execute-consumer consumer message)))

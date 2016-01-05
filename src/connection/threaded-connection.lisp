@@ -50,14 +50,14 @@
             (progn ,@body)
          (write-lock-end ,rwlock%)))))
 
-(defclass shared-connection (connection)
+(defclass threaded-connection (connection)
   ((control-fd)
    (control-mailbox :reader connection-control-mailbox)
    (state-lock :initform (make-connection-state-lock) :reader connection-state-lock)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
    (connection-thread :reader connection-thread)))
 
-(defmethod connection-open-p% ((connection shared-connection))
+(defmethod connection-open-p% ((connection threaded-connection))
   (and connection
        (slot-boundp connection 'connection-thread)
        (bt:thread-alive-p (connection-thread connection))
@@ -80,13 +80,13 @@
 
 (defmacro execute-in-connection-thread-sync ((&optional (connection '*connection*)) &body body)
   (with-gensyms (lock condition return connection% error)
-    `(let ((,lock (bt:make-lock "xecute-in-connection-thread-sync"))
+    `(let ((,lock (bt:make-lock "execute-in-connection-thread-sync"))
            (,condition (bt:make-condition-variable))
            (,return nil)
            (,connection% ,connection)
            (,error))
        (if (connection-open-p ,connection%)
-           (if (or (not (typep ,connection% 'shared-connection))
+           (if (or (not (typep ,connection% 'threaded-connection))
                    (eq (bt:current-thread) (connection-thread ,connection%)))
                ,@body
                (bt:with-lock-held (,lock)
@@ -112,7 +112,7 @@
 (defgeneric connection-init (connection))
 (defgeneric connection-loop (connection))
 
-(defmethod connection.open% ((connection shared-connection))
+(defmethod connection.open% ((connection threaded-connection))
   (connection.init connection)
   (setf (slot-value connection 'connection-thread)
         (bt:make-thread (lambda () (connection-loop connection))

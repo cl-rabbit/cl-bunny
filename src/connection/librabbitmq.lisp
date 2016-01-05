@@ -5,7 +5,7 @@
                          :initarg :connection
                          :reader connection-cl-rabbit-connection)))
 
-(defclass shared-librabbitmq-connection (librabbitmq-connection shared-connection)
+(defclass threaded-librabbitmq-connection (librabbitmq-connection threaded-connection)
   ())
 
 (defmethod connection-channel-max% ((connection librabbitmq-connection))
@@ -59,8 +59,8 @@
          :class-id (cl-rabbit:rabbitmq-server-error/class-id e)
          :method-id (cl-rabbit:rabbitmq-server-error/method-id e)))
 
-(defmethod connection.new% ((type (eql 'shared-librabbitmq-connection)) spec pool-tag)
-  (let ((connection (make-instance 'shared-librabbitmq-connection :spec spec
+(defmethod connection.new% ((type (eql 'threaded-librabbitmq-connection)) spec pool-tag)
+  (let ((connection (make-instance 'threaded-librabbitmq-connection :spec spec
                                                                   :pool-tag pool-tag)))
     (setup-execute-in-connection-lambda connection)
     connection))
@@ -84,7 +84,7 @@
   (setf (slot-value connection 'state) :closed)
   (cl-rabbit:destroy-connection (connection-cl-rabbit-connection connection)))
 
-(defmethod connection.close% ((connection shared-librabbitmq-connection) timeout)
+(defmethod connection.close% ((connection threaded-librabbitmq-connection) timeout)
   (if (eq (bt:current-thread) (connection-thread connection))
       (progn (connection.send connection connection (make-instance 'amqp-method-connection-close :reply-code +amqp-reply-success+))
              (throw 'stop-connection (values)))
@@ -165,7 +165,7 @@
           (when one-shot
             (return (values ret t))))))))
 
-(defmethod connection.init ((connection shared-librabbitmq-connection))
+(defmethod connection.init ((connection threaded-librabbitmq-connection))
   (handler-case
       (with-slots (cl-rabbit-connection cl-rabbit-socket spec) connection
         (setf cl-rabbit-connection (cl-rabbit:new-connection))

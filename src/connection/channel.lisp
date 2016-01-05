@@ -74,7 +74,7 @@
   (:documentation "API Endpoint, hides transport implementation"))
 
 (defmethod channel.send :around (channel method)
-  (if (or (not (typep (channel-connection channel) 'shared-connection))
+  (if (or (not (typep (channel-connection channel) 'threaded-connection))
           (eq (bt:current-thread) (connection-thread (channel-connection channel))))
       ;; we are inside of connection thread, just return promise
       (call-next-method)

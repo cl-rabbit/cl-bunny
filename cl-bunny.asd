@@ -42,7 +42,7 @@
                   ((:file "spec")
                    (:file "pool")
                    (:file "connection-base")
-                   (:file "shared-connection")
+                   (:file "threaded-connection")
                    (:file "librabbitmq")
                    (:file "channel")))
                  (:file "message")
