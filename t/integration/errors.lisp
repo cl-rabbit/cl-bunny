@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan 1)
+(plan 2)
 
 (subtest "Connection errors"
   (subtest "General"

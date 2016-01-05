@@ -1,6 +1,6 @@
 (in-package :cl-bunny.test)
 
-(plan 5)
+(plan 1)
 
 (subtest "Channel tests"
   (is-error (channel.new :connection (connection.new)) 'connection-closed-error "Can't create channel for closed connection")

@@ -29,7 +29,7 @@
                                         (connection.close :connection connection)))
                                     :arguments (list *connection*))
              (sleep 1)
-             (is-error (queue.declare) 'bunny:connection-closed-error
+             (is-error (queue.declare) 'bunny:channel-closed-error
                        "while closing connection control mailbox drained and all functions called. connection is closed at this time")
              ))
          (pass "passed"))
