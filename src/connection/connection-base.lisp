@@ -4,7 +4,8 @@
   "Current AMQP connection")
 
 (defparameter *connection-type* 'threaded-librabbitmq-connection)
-(defparameter *notification-lambda* nil)
+(defparameter *notification-lambda* nil
+  "If not NIL expected to be lambda (lambda) -> bb:promise.")
 
 (defparameter *debug-connection* nil)
 

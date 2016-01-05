@@ -56,6 +56,7 @@
 
            #:*connection*
            #:*connection-type*
+           #:*notification-lambda*
            #:connection.new
            #:connection.open
            #:connection.close
