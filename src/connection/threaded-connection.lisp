@@ -78,37 +78,6 @@
   `(funcall (connection-lambda ,connection)
             (lambda () ,@body)))
 
-(defmacro execute-in-connection-thread-sync ((&optional (connection '*connection*)) &body body)
-  (with-gensyms (lock condition return connection% error)
-    `(let ((,lock (bt:make-lock "execute-in-connection-thread-sync"))
-           (,condition (bt:make-condition-variable))
-           (,return nil)
-           (,connection% ,connection)
-           (,error))
-       (if (connection-open-p ,connection%)
-           (if (or (not (typep ,connection% 'threaded-connection))
-                   (eq (bt:current-thread) (connection-thread ,connection%)))
-               ,@body
-               (bt:with-lock-held (,lock)
-                 (funcall (connection-lambda ,connection%)
-                          (lambda (&aux (*connection* ,connection%))
-                             (bt:with-lock-held (,lock)
-                               (handler-case
-                                   (setf ,return
-                                         (multiple-value-list
-                                          (unwind-protect
-                                               (progn
-                                                 ,@body)
-                                            (bt:condition-notify ,condition))))
-                                 (cl-rabbit::rabbitmq-server-error (e)
-                                   (log:error "Server error: ~a" e)
-                                   (setf ,error e))))))
-                 (bt:condition-wait ,condition ,lock)
-                 (if ,error
-                     (error ,error)
-                     (values-list ,return))))
-           (error 'connection-closed-error :connection ,connection%)))))
-
 (defgeneric connection-init (connection))
 (defgeneric connection-loop (connection))
 
@@ -119,3 +88,44 @@
                         :name (format nil "CL-BUNNY connection thread. Spec: ~a"
                                       (connection-spec connection))))
   connection)
+
+(defmethod execute-on-connection-thread ((connection threaded-connection) channel lambda)
+  (if (eq (bt:current-thread) (connection-thread connection))
+      (call-next-method)
+      (with-read-lock (connection-state-lock connection)
+        (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
+        (let ((promise (threaded-promise)))
+          (execute-in-connection-thread (connection)
+            (handler-case
+                (promise.resolve promise (funcall lambda))
+              (amqp-channel-error (e)
+                (log:debug "~a" e)
+                (channel.receive channel (make-instance 'amqp-method-channel-close
+                                                        :method-id (amqp::amqp-error-method e)
+                                                        :class-id (amqp::amqp-error-class e)
+                                                        :reply-text (amqp::amqp-error-reply-text e)
+                                                        :reply-code (amqp::amqp-error-reply-code e)))
+                (promise.reject promise e))
+              (amqp-connection-error (e)
+                (log:debug "~a" e)
+                (throw 'stop-connection
+                  (lambda ()
+                    (promise.reject promise e))))
+              (transport-error (e)
+                (log:debug "~a" e)
+                (throw 'stop-connection
+                  (lambda ()
+                    (promise.reject promise e))))
+              (error (e)
+                (log:debug "~a" e)
+                (promise.reject promise e))))
+          (promise.force promise :timeout *force-timeout*)))))
+
+
+(defmacro connection-execute (connection channel &body body)
+  `(execute-on-connection-thread ,connection ,channel
+                                 (lambda () ,@body)))
+
+(defmacro execute-in-connection-thread-sync ((&optional (connection '*connection*)) &body body)
+  `(execute-on-connection-thread ,connection nil
+                                 (lambda () ,@body)))

@@ -54,15 +54,13 @@
   (assert (or (null channel-id) (and (positive-integer-p channel-id)
                                      (<= channel-id (connection-channel-max% connection)))))
   ;; with-read-lock (connection-state-lock connection)
-  (execute-in-connection-thread-sync (connection)
-    (if (connection-open-p connection)
-        (let ((channel (make-instance 'channel :connection connection
-                                               :id channel-id)))
-          (when on-error
-            (event+ (channel-on-error% channel) on-error))
-          (connection.register-channel channel)
-          channel)
-        (error 'connection-closed-error :connection connection))))
+  (connection-execute connection connection
+    (let ((channel (make-instance 'channel :connection connection
+                                           :id channel-id)))
+      (when on-error
+        (event+ (channel-on-error% channel) on-error))
+      (connection.register-channel channel)
+      channel)))
 
 (defun channel-on-error (&optional (channel *channel*))
   (channel-on-error% channel))
@@ -73,52 +71,22 @@
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 
-(defmethod channel.send :around (channel method)
-  (if (or (not (typep (channel-connection channel) 'threaded-connection))
-          (eq (bt:current-thread) (connection-thread (channel-connection channel))))
-      ;; we are inside of connection thread, just return promise
-      (call-next-method)
-      ;; we are calling from different thread,
-      ;; for now we accept this as call from regular sync lisp code
-      ;; use lparallel promise to lift errors
-      (let ((promise (threaded-promise)))
-        (execute-in-connection-thread ((channel-connection channel))
-          (handler-case
-              (promise.resolve promise (channel.send channel method))
-            (amqp-channel-error (e)
-              (log:debug "~a" e)
-              (channel.receive channel (make-instance 'amqp-method-channel-close
-                                                      :method-id (amqp::amqp-error-method e)
-                                                      :class-id (amqp::amqp-error-class e)
-                                                      :reply-text (amqp::amqp-error-reply-text e)
-                                                      :reply-code (amqp::amqp-error-reply-code e)))
-              (promise.reject promise e))
-            (amqp-connection-error (e)
-              (log:debug "~a" e)
-              (throw 'stop-connection
-                (lambda ()
-                  (promise.reject promise e))))
-            (transport-error (e)
-              (log:debug "~a" e)
-              (throw 'stop-connection
-                (lambda ()
-                  (promise.reject promise e))))
-            (error (e)
-              (log:debug "~a" e)
-              (promise.reject promise e))))
-        (promise.force promise :timeout *force-timeout*))))
-
 (defmethod channel.send (channel method)
   (connection.send (channel-connection channel) channel method))
 
 (defmacro channel.send% (channel method &body body)
-  `(let ((reply (channel.send ,channel ,method)))
-     (declare (ignorable reply))
-     ,@body))
+  (with-gensyms (channel%)
+    `(let ((,channel% ,channel))
+       (assert (channel-open-p% ,channel%) () 'channel-closed-error :channel ,channel%)
+       (connection-execute (channel-connection ,channel%) ,channel%
+         (assert (channel-open-p% ,channel%) () 'channel-closed-error :channel ,channel%)
+         (let ((reply (channel.send ,channel% ,method)))
+           (declare (ignorable reply))
+           ,@body)))))
 
 (defun channel.open (&optional (channel *channel*))
-  (channel.send% channel
-      (make-instance 'amqp-method-channel-open)
+  (connection-execute (channel-connection channel) channel
+    (channel.send channel (make-instance 'amqp-method-channel-open))
     (setf (channel-open-p% channel) t)
     channel))
 

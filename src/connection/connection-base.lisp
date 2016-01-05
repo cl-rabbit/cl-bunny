@@ -161,3 +161,10 @@
   (assert connection)
   (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
   (connection.consume% connection timeout one-shot))
+
+(defgeneric execute-on-connection-thread (connection channel lambda))
+
+(defmethod execute-on-connection-thread ((connection connection) channel lambda)
+  "Single-thread sync connection"
+  (assert (connection-open-p connection) () 'connection-closed-error :connection connection)
+  (funcall lambda))
