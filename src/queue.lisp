@@ -140,10 +140,18 @@
                       :channel channel))
 
 (defun queue.peek (&optional (queue ""))
-  (with-channel ()
-    (let ((message (queue.get queue)))
-      (message.nack message :requeue t)
-      message)))
+  (if *notification-lambda*
+    (bb:alet ((channel (channel.new.open)))
+      (bb:chain
+          (queue.get queue :channel channel)
+        (:then (message)
+               (bb:chain
+                   (message.nack message :requeue t)
+                 (:then () message)))))
+    (with-channel ()
+      (let ((message (queue.get queue)))
+        (message.nack message :requeue t)
+        message))))
 
 (defun queue.get (&optional (queue "") &key (no-ack nil) (channel *channel*))
   (channel.send% channel
