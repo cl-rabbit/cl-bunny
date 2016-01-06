@@ -94,10 +94,11 @@
   (assert connection)
   (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
   ;; TODO: if open fails automatically generated channel-id should be released
-  (channel.open (channel.new :on-error on-error
-                             :connection connection
-                             :channel-id (or channel-id
-                                             (next-channel-id (connection-channel-id-allocator connection))))))
+  (connection-execute connection connection
+    (channel.open (channel.new :on-error on-error
+                               :connection connection
+                               :channel-id (or channel-id
+                                               (next-channel-id (connection-channel-id-allocator connection)))))))
 
 (defun channel.flow (active &key (channel *channel*))
   (channel.send% channel
