@@ -145,8 +145,10 @@
                                              (text "Hello World!"))
                                      (bb:chain
                                          (bunny:queue.bind q x :routing-key q)
-                                       (:then () (bunny:subscribe-sync q))
                                        (:then () (bunny:publish x text :routing-key q :properties '(:content-type "text/plain")))
+                                       (:then () (queue.peek q))
+                                       (:then (m) (is (message-body-string m) "Hello World!") "Message peeked")
+                                       (:then () (bunny:subscribe-sync q))
                                        (:then () (bunny:consume :one-shot t))
                                        (:then (m) (setf message (message-body-string m)))
                                        (:then () (queue.unbind q x))
