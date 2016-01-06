@@ -12,7 +12,7 @@
            #:error-connection
            #:connection-closed-error
            #:channel-closed-error
-           #:threaded-promise-timeout
+           #:sync-promise-timeout
            #:transport-error
            #:network-error
 
