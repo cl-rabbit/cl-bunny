@@ -31,6 +31,12 @@
                                    (connection.close :connection connection)))
                                :arguments (list *connection*))
         (sleep 2)
-        (is-error (bunny:consume) 'channel-closed-error)))))
+        (let ((error))
+          (handler-case
+              (bunny:consume)
+            (error (e)
+              (setf error e)))
+          (ok (or (typep error 'channel-closed-error)
+                  (typep error 'connection-closed-error)))))) "CHANNEL-CLOSED-ERROR or CONNECTION-CLOSED-ERROR signaled"))
 
 (finalize)
