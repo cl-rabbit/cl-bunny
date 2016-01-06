@@ -18,7 +18,7 @@
                                           (connection.close :connection connection)))
                                       :arguments (list *connection*))
                (sleep 2)
-               (is-error (queue.declare) 'bunny:threaded-promise-timeout
+               (is-error (queue.declare) 'bunny:sync-promise-timeout
                          "if connection unexpectedly closed or threaded call made after queue draining call will block until *force-timout* expired")))))
 
   (progn (with-connection ()
