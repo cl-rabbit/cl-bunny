@@ -89,80 +89,44 @@
                                       (connection-spec connection))))
   connection)
 
+(defun execute-on-connection-thread-impl (connection promise lambda channel)
+  (execute-in-connection-thread (connection)
+    (handler-case
+        (promise.resolve promise (funcall lambda))
+      (amqp-channel-error (e)
+        (log:debug "~a" e)
+        (channel.receive channel (make-instance 'amqp-method-channel-close
+                                                :method-id (amqp::amqp-error-method e)
+                                                :class-id (amqp::amqp-error-class e)
+                                                :reply-text (amqp::amqp-error-reply-text e)
+                                                :reply-code (amqp::amqp-error-reply-code e)))
+        (promise.reject promise e))
+      (amqp-connection-error (e)
+        (log:debug "~a" e)
+        (throw 'stop-connection
+          (lambda ()
+            (promise.reject promise e))))
+      (transport-error (e)
+        (log:debug "~a" e)
+        (throw 'stop-connection
+          (lambda ()
+            (promise.reject promise e))))
+      (error (e)
+        (log:debug "~a" e)
+        (promise.reject promise e)))))
+
 (defmethod execute-on-connection-thread ((connection threaded-connection) channel lambda)
   (if (eq (bt:current-thread) (connection-thread connection))
       (call-next-method)
-      (if *notification-lambda*
-          (let ((notify-lambda *notification-lambda*))
-            ;; we're inside of non-block thread
-            ;; must return blackbird promise
-            (with-read-lock (connection-state-lock connection)
-              (assert (connection-open-p connection) () 'connection-closed-error :connection connection))
-            (let ((promise (bb::make-promise)))
-              (execute-in-connection-thread (connection)
-                (handler-case
-                    (let ((values (multiple-value-list (funcall lambda))))
-                      (funcall notify-lambda
-                               (lambda ()
-                                 (apply #'bb::finish promise values))))
-                  (amqp-channel-error (e)
-                    (log:debug "~a" e)
-                    (channel.receive channel (make-instance 'amqp-method-channel-close
-                                                            :method-id (amqp::amqp-error-method e)
-                                                            :class-id (amqp::amqp-error-class e)
-                                                            :reply-text (amqp::amqp-error-reply-text e)
-                                                            :reply-code (amqp::amqp-error-reply-code e)))
-                    (funcall notify-lambda
-                             (lambda ()
-                               (bb::signal-error promise e))))
-                  (amqp-connection-error (e)
-                    (log:debug "~a" e)
-                    (throw 'stop-connection
-                      (lambda ()
-                        (funcall notify-lambda
-                                 (lambda ()
-                                   (bb::signal-error promise e))))))
-                  (transport-error (e)
-                    (log:debug "~a" e)
-                    (throw 'stop-connection
-                      (lambda ()
-                        (funcall notify-lambda
-                                 (lambda ()
-                                   (bb::signal-error promise e))))))
-                  (error (e)
-                    (log:debug "~a" e)
-                    (funcall notify-lambda
-                             (lambda ()
-                               (bb::signal-error promise e))))))
-              promise))
-          (progn
-            (with-read-lock (connection-state-lock connection)
-              (assert (connection-open-p connection) () 'connection-closed-error :connection connection))
-            (let ((promise (threaded-promise)))
-              (execute-in-connection-thread (connection)
-                (handler-case
-                    (promise.resolve promise (funcall lambda))
-                  (amqp-channel-error (e)
-                    (log:debug "~a" e)
-                    (channel.receive channel (make-instance 'amqp-method-channel-close
-                                                            :method-id (amqp::amqp-error-method e)
-                                                            :class-id (amqp::amqp-error-class e)
-                                                            :reply-text (amqp::amqp-error-reply-text e)
-                                                            :reply-code (amqp::amqp-error-reply-code e)))
-                    (promise.reject promise e))
-                  (amqp-connection-error (e)
-                    (log:debug "~a" e)
-                    (throw 'stop-connection
-                      (lambda ()
-                        (promise.reject promise e))))
-                  (transport-error (e)
-                    (log:debug "~a" e)
-                    (throw 'stop-connection
-                      (lambda ()
-                        (promise.reject promise e))))
-                  (error (e)
-                    (log:debug "~a" e)
-                    (promise.reject promise e))))
+      (progn
+        (with-read-lock (connection-state-lock connection)
+          (assert (connection-open-p connection) () 'connection-closed-error :connection connection))
+        (if *notification-lambda*
+            (let ((promise (make-async-promise *notification-lambda*)))
+              (execute-on-connection-thread-impl connection promise lambda channel)
+              promise)
+            (let ((promise (make-sync-promise)))
+              (execute-on-connection-thread-impl connection promise lambda channel)
               (promise.force promise :timeout *force-timeout*))))))
 
 
