@@ -25,3 +25,6 @@
   (print-unreadable-object (channel s :type t :identity t)
     (format s "~:[closed~;open~] id=~a mode=~(~a~) consumers=~a" (channel-open-p channel) (channel-id channel) (channel-mode channel) (hash-table-count (channel-consumers channel)))))
 
+(defmethod print-object ((connection connection) s)
+  (print-unreadable-object (connection s :type t :identity t)
+    (format s "~:[closed~;open~] spec=\"~A\" channels=~a" (connection-open-p connection) (connection-spec connection) (hash-table-count (connection-channels connection)))))

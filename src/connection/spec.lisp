@@ -92,8 +92,10 @@
   (render-connection-parameters spec stream))
 
 (defmethod print-object ((spec connection-spec) stream)
-  (print-unreadable-object (spec stream :type t :identity t)
-    (print-amqp-object spec stream)))
+  (if *print-pretty*
+      (print-amqp-object spec stream)
+      (print-unreadable-object (spec stream :type t :identity t)
+        (print-amqp-object spec stream))))
 
 (defun maybe-unescape-component (value)
   (when value
