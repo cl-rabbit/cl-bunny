@@ -128,7 +128,7 @@
 
 (defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (ignore-some-conditions (connection-closed-error network-error)
-    (execute-in-connection-thread-sync ((channel-connection channel))
+    (connection-execute (channel-connection channel) channel
       (ignore-some-conditions (channel-closed-error)
         (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
                                                           :reply-code reply-code
