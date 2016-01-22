@@ -13,7 +13,7 @@
 
 (defgeneric connections-pool.remove% (pool connection))
 
-(defgeneric connections-pool.find-or-run% (pool spec))
+(defgeneric connections-pool.find-or-run% (pool tag spec))
 
 (defclass eq-connections-pool (connections-pool-base)
   ((storage :initform (make-hash-table :test #'equal):reader connections-pool-storage)
@@ -53,10 +53,10 @@
   (bt:with-recursive-lock-held ((connections-pool-lock pool))
     (remhash tag (connections-pool-storage pool))))
 
-(defmethod connections-pool.find-or-run% ((pool eq-connections-pool) spec)
+(defmethod connections-pool.find-or-run% ((pool eq-connections-pool) tag spec)
   (bt:with-recursive-lock-held ((connections-pool-lock pool))
-    (or (connections-pool.get% pool spec)
-        (connections-pool.add% pool (connection.open (connection.new spec))))))
+    (or (connections-pool.get% pool tag)
+        (connections-pool.add% pool (connection.open (connection.new spec :pool-tag tag))))))
 
 
 (defparameter *connections-pool* (make-instance 'eq-connections-pool))
@@ -80,5 +80,5 @@
 (defun connections-pool.remove (connection-or-tag &key (pool *connections-pool*))
   (connections-pool.remove% pool connection-or-tag))
 
-(defun connections-pool.find-or-run (spec &key (pool *connections-pool*))
-  (connections-pool.find-or-run% pool spec))
+(defun connections-pool.find-or-run (tag spec &key (pool *connections-pool*))
+  (connections-pool.find-or-run% pool tag spec))

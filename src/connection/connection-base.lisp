@@ -149,12 +149,12 @@
                                                          (if ,shared-val 'threaded-librabbitmq-connection
                                                              'librabbitmq-connection))))
                               (if ,shared-val
-                                  (connections-pool.find-or-run ,connection-spec-val)
+                                  (connections-pool.find-or-run (if (eq t ,shared-val) ,connection-spec-val ,shared-val) ,connection-spec-val)
                                   (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat))))))
          (unwind-protect
               (progn
                 ,@body)
-           (when (and (not ,shared-val))
+           (unless ,shared-val
              (connection.close)))))))
 
 (defgeneric connection.consume% (connection timeout one-shot))
