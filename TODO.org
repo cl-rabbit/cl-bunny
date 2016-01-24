@@ -33,13 +33,13 @@
 - [ ] SSL/TLS
   - [ ] Support
   - [ ] Tests
-- [-] Print-objects for
+- [X] Print-objects for
   - [X] connection spec
-  - [ ] connection
-  - [ ] connections pool
-  - [ ] message
-  - [ ] queue
-  - [ ] channel
-  - [ ] consumer
+  - [X] connection
+  - [X] connections pool
+  - [X] message
+  - [X] queue
+  - [X] channel
+  - [X] consumer
 - [ ] Maybe add state slot[unsubsribed|active|cancelled] to Consumer
   Note read/write operations should be probably guarded with rw-lock
