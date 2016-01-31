@@ -113,7 +113,9 @@
 (defgeneric get-channel (connection channel-id))
 
 (defmethod get-channel ((connection connection) channel-id)
-  (gethash channel-id (connection-channels connection)))
+  (if (= 0 channel-id)
+      connection
+      (gethash channel-id (connection-channels connection))))
 
 (defun connection.get-channel (channel-id &key (connection *connection*))
   (get-channel connection channel-id))
