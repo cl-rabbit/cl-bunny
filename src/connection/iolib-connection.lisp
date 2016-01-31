@@ -27,24 +27,33 @@
   (setf (slot-value connection 'control-fd) (eventfd:eventfd.new :semaphore t)
         (slot-value connection 'control-mailbox) (safe-queue:make-queue)))
 
+(defun channel.receive-frame (channel frame)
+  (error "Not Implemented"))
+
 (defmethod connection-loop ((connection threaded-iolib-connection))
   (with-slots (control-fd control-mailbox event-base socket) connection
     (let ((of-queue (make-output-frame-queue))
           (fap-parser (make-fap-parser)))
-      (flet ((enqueue-frame (frame)              
-               (lparallel.raw-queue:push-raw-queue frame of-queue)
+      (flet ((enqueue-frame (frame)
+               (output-frame-queue-push of-queue frame)
                (unless (eq (output-frame-queue-state of-queue) :sending)
                  (iolib:set-io-handler (connection-event-base connection)
                                        (iolib:socket-os-fd (connection-socket connection))
                                        :write
                                        (lambda (fd e ex)
+                                         (declare (ignorable fd e ex))
                                          (send-queued-frames connection of-queue)))
                  (setf (output-frame-queue-state of-queue) :sending)))
-             (read-frame ()
+             (read-frames ()
                (let ((read (iolib:receive-from (iolib:socket-os-fd socket)
                                                :buffer (fap-parser-buffer fap-parser)
-                                               :start (fap-parser-buffer-index fap-parser)))))
-               (fap-parser-advance fap-parser read)))
+                                               :start (fap-parser-buffer-index fap-parser))))
+                 (loop
+                   :as frame = (fap-parser-advance fap-parser read)
+                   :if frame
+                   :collect frame
+                   :else :do
+                      (return)))))
         (iolib:with-event-base (event-base)
 
           (bb:chain (connection.open-async connection)
@@ -61,16 +70,18 @@
                                                  ;; dequeue only once
                                                  (if-let ((thing (safe-queue:dequeue control-mailbox)))
                                                    (typecase thing
-                                                     (frame (enqueue-frame thing))
+                                                     (amqp::frame (enqueue-frame thing))
                                                      (function (funcall thing))))))
                    (iolib:set-io-handler event-base
                                          socket
-                                         :read (lambda (fd e ex)                                                      
+                                         :read (lambda (fd e ex)
                                                  (declare (ignorable fd e ex))
                                                  (log:debug "Got something to read on connection thread")
-                                                 (if-let ((frame (read-frame)))
-                                                   (if-let ((channel (get-channel connection (frame-channel frame))))
-                                                     (channel.receive-frame channel frame)
-                                                     (log:warn "Message received for closed channel: ~a" (frame-channel frame))))))))
+                                                 (loop for frame in (read-frames)
+                                                       as channel = (get-channel connection (frame-channel frame))
+                                                       if channel do
+                                                          (channel.receive-frame channel frame)
+                                                       else do
+                                                          (log:warn "Message received for closed channel: ~a" (frame-channel frame)))))))
 
-          (iolib:event-dispatch))))))
+          (iolib:event-dispatch event-base))))))

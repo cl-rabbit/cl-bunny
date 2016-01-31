@@ -11,6 +11,9 @@
     (amqp:frame-encoder frame obuffer)
     (amqp:obuffer-get-bytes obuffer)))
 
+(defun output-frame-queue-push (of-queue frame)
+  (lparallel.raw-queue:push-raw-queue frame (output-frame-queue-queue of-queue)))
+
 (defun send-queued-frames (connection of-queue)
   (unless (output-frame-queue-current-frame-bytes of-queue)
     (when (= 0 (lparallel.raw-queue:raw-queue-count of-queue))
