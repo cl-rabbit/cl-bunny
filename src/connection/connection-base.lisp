@@ -24,6 +24,10 @@
              :initarg :on-close
              :accessor connection-on-close%)))
 
+(defgeneric channel-id (channel)
+  (:method ((channel connection))
+    0))
+
 (defgeneric connection-channel-max% (connection))
 
 (defgeneric connection-frame-max% (connection))
