@@ -75,62 +75,84 @@
                        :else :do
                           (log:debug "no frame, exiting loop")
                           (return)))))))
-        (iolib:with-event-base (eb)
-          (setf event-base eb)
-          (let ((*event-base* eb))
-            (bb:chain (connection.open-async connection)
-              (:then ()
-                     ;; naively reset activity timestamps
-                     ;; heartbeat tracking should be started in connection.open-async really
-                     (setf (connection-last-server-activity connection) (get-universal-time)
-                           (connection-last-client-activity connection) (get-universal-time)
-                           (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
-                           (slot-value connection 'state) :open)
-              ;;       (promise.resolve (connection-open-promise connection))
-                     )
-              (:then ()
-                     (iolib:set-io-handler event-base
-                                           control-fd
-                                           :read (lambda (fd e ex)
-                                                   (declare (ignorable fd e ex))
-                                                   (eventfd.read control-fd)
-                                                   (log:debug "Got lambda to execute on connection thread")
-                                                   ;; eventfd is in semaphore mode
-                                                   ;; dequeue only once
-                                                   (when-let ((thing (safe-queue:dequeue control-mailbox)))
-                                                     (log:debug thing)
-                                                     (etypecase thing
-                                                       (amqp::frame (enqueue-frame thing))
-                                                       (function (funcall thing))
-                                                       (symbol (iolib:exit-event-loop event-base))))))
-                     (iolib:set-io-handler event-base
-                                           (iolib:socket-os-fd socket)
-                                           :read (lambda (fd e ex)
-                                                   (declare (ignorable fd e ex))
-                                                   (log:debug "Got something to read on connection thread")
-                                                   (loop for frame in (read-frames)
-                                                         as channel = (get-channel connection (frame-channel frame))
-                                                         unless (typep frame 'heartbeat-frame)
-                                                         if channel do
-                                                            (channel.receive-frame channel frame)
-                                                         else do
-                                                            (log:warn "Message received for closed channel: ~a" (frame-channel frame)))))
-                     (unless (= 0 (connection-heartbeat% connection))
-                       (iolib:add-timer event-base
-                                        (lambda ()
-                                          (let ((now (get-universal-time)))  ;; TODO: monotonic time?
-                                            (cond
-                                              ((> (/ (- now (connection-last-server-activity connection)) (connection-heartbeat% connection))
-                                                  2)
-                                               (throw 'stop-connection 'transport-error))
-                                              ((> now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
-                                               (log:debug "Sending HEARTBEAT")
-                                               (enqueue-frame heartbeat-frame)))))
-                                        (+ 0.4 (/ (connection-heartbeat% connection) 2)))))
-              (:catch (e)
-                (error e)))
 
-            (iolib:event-dispatch event-base)))))))
+        (catch 'stop-connection
+          (iolib:with-event-base (eb)
+            (setf event-base eb)
+            (let ((*event-base* eb))
+              (bb:chain (connection.open-async connection)
+                (:then ()
+                       ;; naively reset activity timestamps
+                       ;; heartbeat tracking should be started in connection.open-async really
+                       (setf (connection-last-server-activity connection) (get-universal-time)
+                             (connection-last-client-activity connection) (get-universal-time)
+                             (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
+                             (slot-value connection 'state) :open)
+                       ;;       (promise.resolve (connection-open-promise connection))
+                       )
+                (:then ()
+                       (iolib:set-io-handler event-base
+                                             control-fd
+                                             :read (lambda (fd e ex)
+                                                     (declare (ignorable fd e ex))
+                                                     (eventfd.read control-fd)
+                                                     (log:debug "Got lambda to execute on connection thread")
+                                                     ;; eventfd is in semaphore mode
+                                                     ;; dequeue only once
+                                                     (when-let ((thing (safe-queue:dequeue control-mailbox)))
+                                                       (log:debug thing)
+                                                       (etypecase thing
+                                                         (amqp::frame (enqueue-frame thing))
+                                                         (function (funcall thing))
+                                                         (symbol (iolib:exit-event-loop event-base))))))
+                       (iolib:set-io-handler event-base
+                                             (iolib:socket-os-fd socket)
+                                             :read (lambda (fd e ex)
+                                                     (declare (ignorable fd e ex))
+                                                     (log:debug "Got something to read on connection thread")
+                                                     (loop for frame in (read-frames)
+                                                           as channel = (get-channel connection (frame-channel frame))
+                                                           unless (typep frame 'heartbeat-frame)
+                                                           if channel do
+                                                              (channel.receive-frame channel frame)
+                                                           else do
+                                                              (log:warn "Message received for closed channel: ~a" (frame-channel frame)))))
+                       (unless (= 0 (connection-heartbeat% connection))
+                         (iolib:add-timer event-base
+                                          (lambda ()
+                                            (let ((now (get-universal-time)))  ;; TODO: monotonic time?
+                                              (cond
+                                                ((> (/ (- now (connection-last-server-activity connection)) (connection-heartbeat% connection))
+                                                    2)
+                                                 (throw 'stop-connection 'transport-error))
+                                                ((> now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
+                                                 (log:debug "Sending HEARTBEAT")
+                                                 (enqueue-frame heartbeat-frame)))))
+                                          (+ 0.4 (/ (connection-heartbeat% connection) 2)))))
+                (:catch (e)
+                  (error e)))
+
+              (iolib:event-dispatch event-base))))
+        (with-write-lock (connection-state-lock connection)
+          (setf (slot-value connection 'state) :closing)
+          (event! (connection-on-close% connection) connection)
+          (eventfd.close control-fd)
+          (log:debug "Stopping AMQP connection")
+          (when (connection-pool connection)
+            (connections-pool.remove connection))
+          (maphash (lambda (id channel)
+                     (declare (ignorable id))
+                     (setf (channel-open-p% channel) nil)
+                     (safe-queue:mailbox-send-message (channel-mailbox channel)
+                                                      (make-instance 'amqp-method-connection-close)))
+                   (connection-channels connection))
+          (log:debug "closed-all-channels")
+          ;; ;; drain control mailbox
+          ;; (loop for lambda = (safe-queue:dequeue control-mailbox)
+          ;;       while lambda
+          ;;     do (ignore-errors (funcall lambda)))
+          ;; (log:debug "queue drained")
+          (setf (slot-value connection 'state) :closed))))))
 
 (defmethod connection-open-p% ((connection threaded-iolib-connection))
   (and connection
