@@ -28,6 +28,9 @@
   (:method ((channel connection))
     0))
 
+(defmethod channel-id ((channel fixnum))
+  channel)
+
 (defgeneric connection-channel-max% (connection))
 
 (defgeneric connection-frame-max% (connection))
