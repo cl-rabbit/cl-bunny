@@ -9,7 +9,9 @@
   (payload-parser))
 
 (defun make-fap-parser ()
-  (let ((fap-parser (make-fap-parser%)))
+  (let ((fap-parser (make-fap-parser% :buffer (nibbles:make-octet-vector 4096)
+                                      :buffer-index 0
+                                      :end-index 0)))
     (setf (fap-parser-parser fap-parser)
           (amqp:make-frame-parser
            :on-frame-type (lambda (parser frame-type)
@@ -36,13 +38,20 @@
                            )))
     fap-parser))
 
-(defun fap-parser-advance (fap-parser read)
-  (incf (fap-parser-end-index fap-parser) read)
-  (multiple-value-bind (read-buffer-index parsed)
-      (frame-parser-consume (fap-parser-parser fap-parser)
-                            (fap-parser-buffer fap-parser)
-                            :start (fap-parser-buffer-index fap-parser)
-                            :end (fap-parser-end-index fap-parser))
-    (incf (fap-parser-buffer-index fap-parser) read-buffer-index)
-    (if parsed
-        (fap-parser-frame fap-parser))))
+(defun fap-parser-advance-end (fap-parser read)  
+  (incf (fap-parser-end-index fap-parser) read))
+
+(defun fap-parser-advance (fap-parser)
+  (unless (= (fap-parser-end-index fap-parser)
+             (fap-parser-buffer-index fap-parser))
+    (multiple-value-bind (read-buffer-index parsed)
+        (frame-parser-consume (fap-parser-parser fap-parser)
+                              (fap-parser-buffer fap-parser)
+                              :start (fap-parser-buffer-index fap-parser)
+                              :end (fap-parser-end-index fap-parser))
+      (if parsed
+          (progn            
+            (setf (fap-parser-buffer-index fap-parser) read-buffer-index)
+            (fap-parser-frame fap-parser))
+          (setf (fap-parser-end-index fap-parser) 0
+                (fap-parser-buffer-index fap-parser) 0)))))
