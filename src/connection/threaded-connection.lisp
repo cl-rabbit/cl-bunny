@@ -78,6 +78,10 @@
   `(funcall (connection-lambda ,connection)
             (lambda () ,@body)))
 
+(defmacro send-to-connection-thread ((&optional (connection '*connection*)) &body body)
+  `(funcall (connection-lambda ,connection)
+            (progn ,@body)))
+
 (defgeneric connection-init (connection))
 (defgeneric connection-loop (connection))
 
