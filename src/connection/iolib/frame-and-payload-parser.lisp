@@ -22,7 +22,7 @@
                                (setf (amqp:frame-channel (fap-parser-frame fap-parser)) frame-channel))
            :on-frame-payload-size (lambda (parser payload-size)
                                     (declare (ignore parser))
-                                    ;; validate frame size
+                                    ;; TODO validate frame size
                                     (unless (= +amqp-frame-heartbeat+ (amqp::frame-type (fap-parser-frame fap-parser)))
                                       (setf (amqp:frame-payload-size (fap-parser-frame fap-parser)) payload-size
                                             (fap-parser-payload-parser fap-parser) (amqp:make-frame-payload-parser (fap-parser-frame fap-parser)))))

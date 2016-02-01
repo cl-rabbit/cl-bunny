@@ -108,10 +108,10 @@
                                            :read (lambda (fd e ex)
                                                    (declare (ignorable fd e ex))
                                                    (log:debug "Got something to read on connection thread")
-                                                   (loop for frame in (print (read-frames))
-                                                         as channel = (get-channel connection (print (frame-channel frame)))                                                         
+                                                   (loop for frame in (read-frames)
+                                                         as channel = (get-channel connection (frame-channel frame))
                                                          unless (typep frame 'heartbeat-frame)
-                                                         if (print channel) do
+                                                         if channel do
                                                             (channel.receive-frame channel frame)
                                                          else do
                                                             (log:warn "Message received for closed channel: ~a" (frame-channel frame)))))
@@ -142,25 +142,26 @@
            (send-to-connection-thread (connection)
              frame)))
 
-
 (defun channel.send! (channel method)
-  (multiple-value-bind (sync replies) (amqp-method-synchronous-p method)
+  (multiple-value-bind (sync reply-matcher) (amqp-method-synchronous-p method)
     (if sync
         (let ((promise (make-sync-promise)))
-          (setf (channel-expected-reply channel) (list replies promise))
+          (setf (channel-expected-reply channel) (list reply-matcher promise))
           (connection.send (channel-connection channel) channel method)
           (promise.force promise :timeout *force-timeout*))
         (connection.send (channel-connection channel) channel method))))
 
 (defun channel.receive-frame (channel frame)
   (log:debug frame)
-  (when-let ((method (print (consume-frame (channel-method-assembler channel) frame))))
+  (when-let ((method (consume-frame (channel-method-assembler channel) frame)))
     (log:debug method)
-    (destructuring-bind (replies promise) (channel-expected-reply channel)
-      (log:debug replies)
+    (destructuring-bind (reply-matcher promise) (channel-expected-reply channel)
+      (log:debug reply-matcher)
       (log:debug promise)
-      (if (typep method replies)
-          (promise.resolve promise method)
+      (if (and reply-matcher (funcall reply-matcher method))
+          (progn
+            (setf (channel-expected-reply channel) nil)
+            (promise.resolve promise method))
           (channel.receive channel method)))))
 
 (defmacro channel.send%1 (channel method &body body)

@@ -151,20 +151,13 @@
 (defun send-frame-async (c frame)
   (write-sequence-async (connection-socket c) (get-frame-bytes frame)))
 
-(defun wait-for-sync-reply (connection channel replies)
-  (bb:alet* ((im (read-method-for-channel-async connection channel))
-             (method-class-name (class-name (class-of im))))
-    (if (symbolp replies)
-        (if (eq replies method-class-name)
-            im
-            (progn
-              ;; (connection.receive connection im
-              (wait-for-sync-reply connection channel replies)))
-        (if (find method-class-name replies)
-            im
-            (progn
-              ;; (connection.receive connection im
-              (wait-for-sync-reply connection channel replies))))))
+(defun wait-for-sync-reply (connection channel reply-matcher)
+  (bb:alet* ((im (read-method-for-channel-async connection channel)))
+    (if (funcall reply-matcher im)
+        im
+        (progn
+          ;; (connection.receive connection im
+          (wait-for-sync-reply connection channel reply-matcher)))))
 
 (defun connection.send-async (connection channel method)
   (bb:chain
@@ -172,9 +165,9 @@
                    (send-frame-async connection frame))
                  (method-to-frames method (channel-id channel) (connection-frame-max% connection)))
     (:then ()
-           (multiple-value-bind (sync replies) (amqp-method-synchronous-p method)
+           (multiple-value-bind (sync reply-matcher) (amqp-method-synchronous-p method)
              (if sync
-                 (wait-for-sync-reply connection channel replies)
+                 (wait-for-sync-reply connection channel reply-matcher)
                  t)))
     (:catch (e) (print e))))
 
