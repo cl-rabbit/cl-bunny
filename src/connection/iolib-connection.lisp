@@ -66,14 +66,15 @@
                  (log:debug "Read: ~a" read)
                  (unless (= 0 read)
                    (fap-parser-advance-end fap-parser read)
-                   (loop
-                     :as frame = (fap-parser-advance fap-parser)
-                     :if frame
-                     :collect (prog1 frame
-                                (log:debug frame))
-                     :else :do
-                        (log:debug "no frame, exiting loop")
-                        (return))))))
+                   (collectors:with-appender-output (add-frame)
+                     (loop
+                       :as frame = (fap-parser-advance fap-parser)
+                       :if frame do
+                          (add-frame (prog1 frame
+                                       (log:debug "received frame ~a" frame)))
+                       :else :do
+                          (log:debug "no frame, exiting loop")
+                          (return)))))))
         (iolib:with-event-base (eb)
           (setf event-base eb)
           (let ((*event-base* eb))
@@ -82,8 +83,9 @@
                      ;; naively reset activity timestamps
                      ;; heartbeat tracking should be started in connection.open-async really
                      (setf (connection-last-server-activity connection) (get-universal-time)
-                           (connection-last-client-activity connection) (get-universal-time))
-                     (setf (slot-value connection 'state) :open)
+                           (connection-last-client-activity connection) (get-universal-time)
+                           (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
+                           (slot-value connection 'state) :open)
               ;;       (promise.resolve (connection-open-promise connection))
                      )
               (:then ()
@@ -95,8 +97,9 @@
                                                    (log:debug "Got lambda to execute on connection thread")
                                                    ;; eventfd is in semaphore mode
                                                    ;; dequeue only once
-                                                   (if-let ((thing (safe-queue:dequeue control-mailbox)))
-                                                     (typecase thing
+                                                   (when-let ((thing (safe-queue:dequeue control-mailbox)))
+                                                     (log:debug thing)
+                                                     (etypecase thing
                                                        (amqp::frame (enqueue-frame thing))
                                                        (function (funcall thing))
                                                        (symbol (iolib:exit-event-loop event-base))))))
@@ -105,9 +108,10 @@
                                            :read (lambda (fd e ex)
                                                    (declare (ignorable fd e ex))
                                                    (log:debug "Got something to read on connection thread")
-                                                   (loop for frame in (read-frames)
-                                                         as channel = (get-channel connection (frame-channel frame))
-                                                         if channel do
+                                                   (loop for frame in (print (read-frames))
+                                                         as channel = (get-channel connection (print (frame-channel frame)))                                                         
+                                                         unless (typep frame 'heartbeat-frame)
+                                                         if (print channel) do
                                                             (channel.receive-frame channel frame)
                                                          else do
                                                             (log:warn "Message received for closed channel: ~a" (frame-channel frame)))))
@@ -121,7 +125,6 @@
                                                (throw 'stop-connection 'transport-error))
                                               ((> now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
                                                (log:debug "Sending HEARTBEAT")
-                                               ;; btw send_frame_inner should update send_heartbeat deadline
                                                (enqueue-frame heartbeat-frame)))))
                                         (+ 0.4 (/ (connection-heartbeat% connection) 2)))))
               (:catch (e)
@@ -138,3 +141,52 @@
   (loop for frame in (method-to-frames method (channel-id channel) (connection-frame-max% connection)) do
            (send-to-connection-thread (connection)
              frame)))
+
+
+(defun channel.send! (channel method)
+  (multiple-value-bind (sync replies) (amqp-method-synchronous-p method)
+    (if sync
+        (let ((promise (make-sync-promise)))
+          (setf (channel-expected-reply channel) (list replies promise))
+          (connection.send (channel-connection channel) channel method)
+          (promise.force promise :timeout *force-timeout*))
+        (connection.send (channel-connection channel) channel method))))
+
+(defun channel.receive-frame (channel frame)
+  (log:debug frame)
+  (when-let ((method (print (consume-frame (channel-method-assembler channel) frame))))
+    (log:debug method)
+    (destructuring-bind (replies promise) (channel-expected-reply channel)
+      (log:debug replies)
+      (log:debug promise)
+      (if (typep method replies)
+          (promise.resolve promise method)
+          (channel.receive channel method)))))
+
+(defmacro channel.send%1 (channel method &body body)
+  `(let ((reply (channel.send! ,channel ,method)))
+     (declare (ignorable reply))
+     ,@body))
+
+(defun channel.new! (&key on-error (connection *connection*) (channel-id))
+  (assert connection)
+  (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
+  (assert (or (null channel-id) (and (positive-integer-p channel-id)
+                                     (<= channel-id (connection-channel-max% connection)))))
+  ;; with-read-lock (connection-state-lock connection)
+  (let ((promise (make-sync-promise)))
+    (execute-in-connection-thread (connection)
+      (let ((channel (make-instance 'channel :connection connection
+                                             :id channel-id
+                                             :method-assembler (make-instance 'method-assembler :max-body-size (- (connection-frame-max% connection) 9)))))
+        (when on-error
+          (event+ (channel-on-error% channel) on-error))
+        (connection.register-channel channel)
+        (promise.resolve promise channel)))
+    (promise.force promise :timeout *force-timeout*)))
+
+(defun channel.open! (&optional (channel *channel*))
+  (channel.send%1 channel
+      (make-instance 'amqp-method-channel-open)
+    (setf (channel-open-p% channel) t)
+    channel))

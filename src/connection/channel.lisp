@@ -30,6 +30,11 @@
                :initform :default
                :initarg :mode
                :reader channel-mode)
+
+   ;; method assembler and replies
+   (expected-reply :initform nil :accessor channel-expected-reply)
+   (method-assembler :initarg :method-assembler :reader channel-method-assembler)
+   
    ;; events
    (on-error :type function
              :initform (make-instance 'bunny-event)
@@ -56,7 +61,8 @@
   ;; with-read-lock (connection-state-lock connection)
   (connection-execute connection connection
     (let ((channel (make-instance 'channel :connection connection
-                                           :id channel-id)))
+                                           :id channel-id
+                                           :method-assembler (make-instance 'method-assembler :max-body-size (- (connection-frame-max% connection) 9)))))
       (when on-error
         (event+ (channel-on-error% channel) on-error))
       (connection.register-channel channel)
