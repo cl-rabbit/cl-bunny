@@ -19,10 +19,12 @@
    (state :initform :closed :reader connection-state)
    (event-base :reader connection-event-base :initarg :event-base)
    ;; events
-   (on-close :type function
-             :initform (make-instance 'bunny-event)
+   (on-close :initform (make-instance 'bunny-event)
              :initarg :on-close
-             :accessor connection-on-close%)))
+             :accessor connection-on-close%)
+   (on-error :initform (make-instance 'bunny-event)
+             :initarg :on-error
+             :accessor connection-on-error%)))
 
 (defgeneric channel-id (channel)
   (:method ((channel connection))
