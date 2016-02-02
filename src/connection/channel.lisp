@@ -6,20 +6,11 @@
 (deftype channel-mode ()
   `(and symbol (member :default :transactional :consume)))
 
-(defclass channel ()
-  ((connection :type connection
-               :initarg :connection
-               :reader channel-connection)
-   (mailbox    :type safe-queue:mailbox
+(defclass channel (channel-base)
+  ((mailbox    :type safe-queue:mailbox
                :initarg :mailbox
                :initform (safe-queue:make-mailbox :name "AMQP Channel mailbox")
                :reader channel-mailbox)
-   (channel-id :type fixnum
-               :initarg :id
-               :reader channel-id)
-   (open-p     :type boolean
-               :initform nil
-               :accessor channel-open-p%)
    (exchanges  :type hash-table
                :initform (make-hash-table :test #'equal)
                :reader channel-exchanges)
@@ -31,10 +22,6 @@
                :initarg :mode
                :reader channel-mode)
 
-   ;; method assembler and replies
-   (expected-reply :initform nil :accessor channel-expected-reply)
-   (method-assembler :initarg :method-assembler :reader channel-method-assembler)
-   
    ;; events
    (on-error :type function
              :initform (make-instance 'bunny-event)
@@ -52,6 +39,15 @@
 
 (defmethod channel-open-p (&optional (channel *channel*))
   (channel-open-p% channel))
+
+;; (defun channel-method-queue.push (channel method)
+;;   (lparallel.raw-queue:push-raw-queue method (channel-method-queue channel)))
+
+;; (defun channel-method-queue.pop (channel)
+;;   (lparallel.raw-queue:pop-raw-queue (channel-method-queue channel)))
+
+;; (defun channel-method-queue-count (channel)
+;;   (lparallel.raw-queue:raw-queue-count (channel-method-queue channel)))
 
 (defun channel.new (&key on-error (connection *connection*) (channel-id))
   (assert connection)
@@ -93,7 +89,7 @@
 (defun channel.open (&optional (channel *channel*))
   (connection-execute (channel-connection channel) channel
     (channel.send channel (make-instance 'amqp-method-channel-open))
-    (setf (channel-open-p% channel) t)
+    (setf (channel-state channel) :open)
     channel))
 
 (defun channel.new.open (&key on-error (connection *connection*) (channel-id))
@@ -207,9 +203,6 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 (defun register-exchange (channel exchange)
   (setf (gethash (exchange-name exchange) (channel-exchanges channel))
         exchange))
-
-
-(defgeneric channel.receive (channel method))
 
 (defmethod channel.receive (channel (method amqp-method-channel-close))
   (log:debug "Received channel.close ~a" (amqp-method-field-reply-text method))

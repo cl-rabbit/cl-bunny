@@ -61,7 +61,7 @@
   (and connection
        (slot-boundp connection 'connection-thread)
        (bt:thread-alive-p (connection-thread connection))
-       (eq (connection-state connection) :open)))
+       (eq (channel-state connection) :open)))
 
 (defun setup-execute-in-connection-lambda (connection)
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
@@ -83,14 +83,16 @@
             (progn ,@body)))
 
 (defgeneric connection-init (connection))
-(defgeneric connection-loop (connection))
+(defgeneric connection-loop (connection promise))
 
 (defmethod connection.open% ((connection threaded-connection))
   (connection.init connection)
-  (setf (slot-value connection 'connection-thread)
-        (bt:make-thread (lambda () (connection-loop connection))
-                        :name (format nil "CL-BUNNY connection thread. Spec: ~a"
-                                      (connection-spec connection))))
+  (let ((promise (make-sync-promise)))    
+    (setf (slot-value connection 'connection-thread)
+          (bt:make-thread (lambda () (connection-loop connection promise))
+                          :name (format nil "CL-BUNNY connection thread. Spec: ~a"
+                                        (connection-spec connection))))
+    (promise.force promise :timeout *force-timeout*))
   connection)
 
 (defun execute-on-connection-thread-impl (connection promise lambda channel)

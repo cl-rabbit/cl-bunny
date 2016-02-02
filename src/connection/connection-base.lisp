@@ -9,14 +9,13 @@
 
 (defparameter *debug-connection* nil)
 
-(defclass connection (connection-in-pool)
+(defclass connection (connection-in-pool channel-base)
   ((spec :initarg :spec :reader connection-spec)
    (channel-id-allocator :type channel-id-allocator
                          :reader connection-channel-id-allocator)
    (channels :type hash-table
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
-   (state :initform :closed :reader connection-state)
    (event-base :reader connection-event-base :initarg :event-base)
    ;; events
    (on-close :initform (make-instance 'bunny-event)
@@ -26,9 +25,11 @@
              :initarg :on-error
              :accessor connection-on-error%)))
 
-(defgeneric channel-id (channel)
-  (:method ((channel connection))
-    0))
+(defmethod channel-id ((channel connection))
+  0)
+
+(defmethod channel-connection ((channel connection))
+  connection)
 
 (defmethod channel-id ((channel fixnum))
   channel)
@@ -55,7 +56,7 @@
 
 (defgeneric connection-open-p% (connection)
   (:method ((connection connection))
-    (eq (connection-state connection) :open)))
+    (eq (channel-state connection) :open)))
 
 (defun connection-open-p (&optional (connection *connection*))
   (connection-open-p% connection))

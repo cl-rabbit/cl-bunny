@@ -46,7 +46,7 @@
   (cl-events:event! (connection-on-error% connection))
   (throw 'stop-connection (values)))
 
-(defmethod connection-loop ((connection threaded-iolib-connection))
+(defmethod connection-loop ((connection threaded-iolib-connection) promise)
   (with-slots (control-fd control-mailbox event-base socket) connection
     (let ((of-queue (make-output-frame-queue))
           (fap-parser (make-fap-parser))
@@ -92,9 +92,10 @@
                        (setf (connection-last-server-activity connection) (get-universal-time)
                              (connection-last-client-activity connection) (get-universal-time)
                              (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
-                             (slot-value connection 'state) :open)
-                     ;;  (promise.resolve promise)
-                       )
+                             (slot-value connection 'state) :open
+                             (slot-value connection 'method-assembler)
+                             (make-instance 'method-assembler :max-body-size (- (connection-frame-max% connection) 9)))
+                       (promise.resolve promise))
                 (:then ()
                        (iolib:set-io-handler event-base
                                              control-fd
@@ -115,7 +116,7 @@
                                              :read (lambda (fd e ex)
                                                      (declare (ignorable fd e ex))
                                                      (print e)
-                                                     (print ex)                                                    
+                                                     (print ex)
                                                      (log:debug "Got something to read on connection thread")
                                                      (loop for frame in (read-frames)
                                                            as channel = (get-channel connection (frame-channel frame))
@@ -164,7 +165,7 @@
 (defmethod connection-open-p% ((connection threaded-iolib-connection))
   (and connection
        ;;;(bt:thread-alive-p (connection-thread connection))
-       (eq (connection-state connection) :open)))
+       (eq (channel-state connection) :open)))
 
 (defmethod connection.send ((connection iolib-connection) channel method)
   (loop for frame in (method-to-frames method (channel-id channel) (connection-frame-max% connection)) do
@@ -184,14 +185,16 @@
   (log:debug frame)
   (when-let ((method (consume-frame (channel-method-assembler channel) frame)))
     (log:debug method)
-    (destructuring-bind (reply-matcher promise) (channel-expected-reply channel)
-      (log:debug reply-matcher)
-      (log:debug promise)
-      (if (and reply-matcher (funcall reply-matcher method))
-          (progn
-            (setf (channel-expected-reply channel) nil)
-            (promise.resolve promise method))
-          (channel.receive channel method)))))
+    (channel.receive channel method)))
+
+(defmethod channel.receive (channel method)
+  (destructuring-bind (reply-matcher promise) (channel-expected-reply channel)
+    (log:debug reply-matcher)
+    (log:debug promise)
+    (if (and reply-matcher (funcall reply-matcher method))
+        (progn
+          (setf (channel-expected-reply channel) nil)
+          (promise.resolve promise method)))))
 
 (defmacro channel.send%1 (channel method &body body)
   `(let ((reply (channel.send! ,channel ,method)))
@@ -220,3 +223,18 @@
       (make-instance 'amqp-method-channel-open)
     (setf (channel-open-p% channel) t)
     channel))
+
+(defmethod channel.receive ((connection threaded-iolib-connection) (method amqp-method-connection-close-ok))
+  (call-next-method)
+  (throw 'stop-connection (values)))
+
+(defmethod connection.close% ((connection threaded-iolib-connection) timeout)
+  (channel.send! connection (make-instance 'amqp-method-connection-close :class-id 0 :method-id 0 :reply-code +amqp-reply-success+))
+  (handler-case
+      (sb-thread:join-thread (connection-thread connection) :timeout timeout)
+    (sb-thread:join-thread-error (e)
+      (case (sb-thread::join-thread-problem e)
+        (:timeout (log:error "Connection thread stalled?")
+         (sb-thread:terminate-thread (connection-thread connection)))
+        (:abort (log:error "Connection thread aborted"))
+        (t (log:error "Connection state is unknown"))))))

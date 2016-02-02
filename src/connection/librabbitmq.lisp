@@ -381,7 +381,7 @@
        (process-unexpected-frame connection)
      exit)))
 
-(defmethod connection-loop ((connection librabbitmq-connection))
+(defmethod connection-loop ((connection librabbitmq-connection) promise)
   (with-slots (cl-rabbit-connection control-fd control-mailbox event-base) connection
     (let ((ret)
           (last-server-activity (get-universal-time))

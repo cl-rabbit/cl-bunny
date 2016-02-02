@@ -27,4 +27,4 @@
 
 (defmethod print-object ((connection connection) s)
   (print-unreadable-object (connection s :type t :identity t)
-    (format s "~:[closed~;open~] spec=\"~A\" channels=~a" (connection-open-p connection) (connection-spec connection) (hash-table-count (connection-channels connection)))))
+    (format s "~:[closed~;open~] spec=\"~A\" channels=~a" (channel-open-p connection) (connection-spec connection) (hash-table-count (connection-channels connection)))))

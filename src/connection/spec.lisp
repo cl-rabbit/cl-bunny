@@ -1,10 +1,10 @@
 (in-package :cl-bunny)
 
-(defconstant +channel-max+ 0)
+(defconstant +channel-max+ 2000)
 
 (defconstant +frame-max+ 131072)
 
-(defconstant +heartbeat-interval+ 0)
+(defconstant +heartbeat-interval+ 60)
 
 (defstruct (connection-spec (:constructor make-connection-spec%))
   (host "localhost" :type string)
