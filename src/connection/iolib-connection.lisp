@@ -41,6 +41,11 @@
   (print frame)
   (break))
 
+(defmethod close-connection-with-error ((connection iolib-connection) error)
+  (log:error "Connection error: ~a" error)
+  (cl-events:event! (connection-on-error% connection))
+  (throw 'stop-connection (values)))
+
 (defmethod connection-loop ((connection threaded-iolib-connection))
   (with-slots (control-fd control-mailbox event-base socket) connection
     (let ((of-queue (make-output-frame-queue))
@@ -88,7 +93,7 @@
                              (connection-last-client-activity connection) (get-universal-time)
                              (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
                              (slot-value connection 'state) :open)
-                       ;;       (promise.resolve (connection-open-promise connection))
+                     ;;  (promise.resolve promise)
                        )
                 (:then ()
                        (iolib:set-io-handler event-base
@@ -109,6 +114,8 @@
                                              (iolib:socket-os-fd socket)
                                              :read (lambda (fd e ex)
                                                      (declare (ignorable fd e ex))
+                                                     (print e)
+                                                     (print ex)                                                    
                                                      (log:debug "Got something to read on connection thread")
                                                      (loop for frame in (read-frames)
                                                            as channel = (get-channel connection (frame-channel frame))
