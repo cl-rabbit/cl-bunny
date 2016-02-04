@@ -5,7 +5,9 @@
 (wu-decimal:enable-reader-macro)
 
 (defmethod mw-equiv:object-constituents ((type (eql 'local-time:timestamp)))
-  (list #'local-time:to-rfc1123-timestring))
+  (list (lambda (timestamp)
+          (with-output-to-string (stream)
+            (local-time:format-rfc1123-timestring stream timestamp)))))
 
 (subtest "Basic class properties tests"
   (subtest "Consumer"
