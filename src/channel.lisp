@@ -77,11 +77,16 @@
     (if sync
         (let ((promise (make-sync-promise)))
           (setf (channel-expected-reply channel) (list reply-matcher (if sync-callback
-                                                                         (lambda (reply)
-                                                                           (promise.resolve promise 
-                                                                             (funcall sync-callback reply)))
-                                                                         (lambda (reply)
-                                                                           (promise.resolve promise reply)))))
+                                                                         (lambda (reply &optional is-error)
+                                                                           (if is-error
+                                                                               (promise.reject promise reply)
+                                                                               (promise.resolve promise
+                                                                                 (funcall sync-callback reply))))
+                                                                         (lambda (reply &optional is-error)
+                                                                           (print reply)
+                                                                           (if is-error
+                                                                               (promise.reject promise reply)
+                                                                               (promise.resolve promise reply))))))
           (connection.send (channel-connection channel) channel method)
           (promise.force promise :timeout *force-timeout*))
         (connection.send (channel-connection channel) channel method))))
@@ -126,14 +131,14 @@
 
 (defun channel.close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (let ((method (make-instance 'amqp-method-channel-close
-                         :reply-code reply-code
-                         :reply-text reply-text
-                         :class-id class-id
-                         :method-id method-id)))
+                               :reply-code reply-code
+                               :reply-text reply-text
+                               :class-id class-id
+                               :method-id method-id)))
     (handler-case
         (channel.send% channel
             method
-            (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
+          (setf (channel-open-p% channel) nil)     ;; TODO: <- unwind-protect?
           (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
           (connection.deregister-channel channel))
       (connection-closed-error () (log:debug "Closing channel on closed connection")))))
@@ -142,10 +147,10 @@
   (ignore-some-conditions (connection-closed-error network-error)
     (ignore-some-conditions (channel-closed-error)
       (channel.send% channel (make-instance 'amqp-method-channel-close
-                                           :reply-code reply-code
-                                           :reply-text reply-text
-                                           :class-id class-id
-                                           :method-id method-id)
+                                            :reply-code reply-code
+                                            :reply-text reply-text
+                                            :class-id class-id
+                                            :method-id method-id)
         (setf (channel-state channel) :closed) ;; TODO: <- unwind-protect?
         (connection.deregister-channel channel)))))
 
@@ -200,7 +205,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   ;; TODO: maybe with-channel should rethrow channel-error?
   #|
   (handler-case (with-channel () ..)
-    (channel-error (e) (log:error "Channel closed unexpectedly ~a" e)))
+  (channel-error (e) (log:error "Channel closed unexpectedly ~a" e)))
   |#
   (destructuring-bind (channel &key close on-error) (parse-with-channel-params params)
     (with-gensyms (allocated-p channel-val close-val)
@@ -246,12 +251,16 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   (channel.close-ok% channel)
   (setf (channel-open-p% channel) nil)
   (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
-  (let ((error-type (ignore-errors (amqp-error-type-from-reply-code (amqp-method-field-reply-code method)))))
-    (when (and error-type (channel-on-error% channel))
-      (event! (channel-on-error% channel) (make-condition error-type
-                                                          :reply-code (amqp-method-field-reply-code method)
-                                                          :reply-text (amqp-method-field-reply-text method)
-                                                          :connection (channel-connection channel)
-                                                          :channel channel
-                                                          :class-id (amqp-method-field-class-id method)
-                                                          :method-id (amqp-method-field-method-id method))))))
+  (let ((error-type (amqp-error-type-from-reply-code (amqp-method-field-reply-code method))))
+    (let ((error (make-condition error-type
+                                 :reply-code (amqp-method-field-reply-code method)
+                                 :reply-text (amqp-method-field-reply-text method)
+                                 :connection (channel-connection channel)
+                                 :channel channel
+                                 :class-id (amqp-method-field-class-id method)
+                                 :method-id (amqp-method-field-method-id method))))
+      (destructuring-bind (rm callback) (channel-expected-reply channel)
+        (when rm
+          (funcall callback error t)))
+      (when (channel-on-error% channel)
+        (event! (channel-on-error% channel) error)))))
