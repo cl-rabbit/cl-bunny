@@ -19,3 +19,6 @@
 (defgeneric channel-open-p% (channel)
   (:method ((channel channel-base))
     (eq (channel-state channel) :open)))
+
+(defmethod (setf channel-open-p%) (value channel)
+  (setf (channel-state channel) (if value t nil)))

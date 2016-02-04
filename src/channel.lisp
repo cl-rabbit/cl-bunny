@@ -90,9 +90,11 @@
         (connection.send (channel-connection channel) channel method))))
 
 (defmacro channel.send% (channel method &body body)
-  `(let ((reply (channel.send ,channel ,method)))
-     (declare (ignorable reply))
-     ,@body))
+  `(progn
+     (assert (channel-open-p% ,channel) () 'channel-closed-error :channel ,channel)
+     (let ((reply (channel.send ,channel ,method)))
+       (declare (ignorable reply))
+       ,@body)))
 
 (defmacro channel.send-with-callback% (channel method &body body)
   `(channel.send ,channel ,method (lambda (reply)
@@ -100,10 +102,9 @@
                                     ,@body)))
 
 (defun channel.open (&optional (channel *channel*))
-  (channel.send% channel
-      (make-instance 'amqp-method-channel-open)
-    (setf (channel-state channel) :open)
-    channel))
+  (channel.send channel (make-instance 'amqp-method-channel-open))
+  (setf (channel-state channel) :open)
+  channel)
 
 (defun channel.new.open (&key on-error (connection *connection*) (channel-id))
   (assert connection)
@@ -143,12 +144,11 @@
 (defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (ignore-some-conditions (connection-closed-error network-error)
     (ignore-some-conditions (channel-closed-error)
-      (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
-                                                        :reply-code reply-code
-                                                        :reply-text reply-text
-                                                        :class-id class-id
-                                                        :method-id method-id))))
-        (declare (ignorable reply))
+      (channel.send% channel (make-instance 'amqp-method-channel-close
+                                           :reply-code reply-code
+                                           :reply-text reply-text
+                                           :class-id class-id
+                                           :method-id method-id)
         (setf (channel-state channel) :closed) ;; TODO: <- unwind-protect?
         (connection.deregister-channel channel)))))
 
@@ -164,6 +164,18 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   (qos :prefetch-count value :global global :channel channel))
 |#
 
+(defmethod normalize-properties ((properties list))
+  (let ((properties (copy-list properties)))
+    (when (find :persistent properties)
+      (setf (getf properties :delivery-mode) (if (getf properties :persistent)
+                                                 2
+                                                 1))
+      (remf properties :persistent))
+    (apply #'make-instance 'amqp-basic-class-properties properties)))
+
+(defmethod normalize-properties ((properties amqp-basic-class-properties))
+  properties)
+
 (defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
   (channel.send% channel
       (make-instance 'amqp-method-basic-publish
@@ -171,8 +183,10 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
                      :routing-key (routing-key routing-key)
                      :mandatory mandatory
                      :immediate immediate
-                     :content content
-                     :content-properties properties)))
+                     :content (if (stringp content)
+                                  (babel:string-to-octets content)
+                                  content)
+                     :content-properties (normalize-properties properties))))
 
 (defun parse-with-channel-params-list (params)
   (if (keywordp (first params))

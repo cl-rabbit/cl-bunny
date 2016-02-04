@@ -151,7 +151,7 @@
                         (wrap-async-on-cancel-with-channel on-cancel channel)
                         on-cancel)))))
 
-(defun subscribe-sync (queue &key on-cancel consumer-tag no-local no-ack exclusive arguments (channel *channel*))
+(defun subscribe-sync (queue &key on-cancel (consumer-tag "") no-local no-ack exclusive arguments (channel *channel*))
   (subscribe queue nil :type :sync
                               :on-cancel on-cancel
                               :consumer-tag consumer-tag

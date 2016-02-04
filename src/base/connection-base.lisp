@@ -71,8 +71,8 @@
 (defun get-connection-type (spec)
   (or *connection-type*
       (if (= 0 (connection-spec-heartbeat-interval spec))
-          'librabbitmq-connection
-          'threaded-librabbitmq-connection)))
+          'iolib-connection
+          'threaded-iolib-connection)))
 
 (defgeneric connection.new% (connection-type spec pool-tag))
 
@@ -158,8 +158,8 @@
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
               (*connection* (let ((*connection-type* (or ,type
-                                                         (if ,shared-val 'threaded-librabbitmq-connection
-                                                             'librabbitmq-connection))))
+                                                         (if ,shared-val 'threaded-iolib-connection
+                                                             'iolib-connection))))
                               (if ,shared-val
                                   (connections-pool.find-or-run (if (eq t ,shared-val) ,connection-spec-val ,shared-val) ,connection-spec-val)
                                   (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat))))))

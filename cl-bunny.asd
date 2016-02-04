@@ -22,7 +22,8 @@
                "eventfd"
                "cl-events"
                "blackbird"
-               "log4cl")
+               "log4cl"
+               "trivial-backtrace")
   :components ((:module "src"
                 :serial t
                 :components
