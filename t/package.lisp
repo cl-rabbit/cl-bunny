@@ -11,4 +11,4 @@
 
 (in-package :cl-bunny.test)
 
-(setf *connection-type* 'bunny::threaded-librabbitmq-connection)
+(setf *connection-type* 'bunny::threaded-iolib-connection)
