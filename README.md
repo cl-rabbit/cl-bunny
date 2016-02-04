@@ -1,35 +1,11 @@
 # CL-BUNNY [![Build Status](https://travis-ci.org/cl-rabbit/cl-bunny.svg)](https://travis-ci.org/cl-rabbit/cl-bunny) [![Coverage Status](https://coveralls.io/repos/cl-rabbit/cl-bunny/badge.svg?branch=master&service=github)](https://coveralls.io/github/cl-rabbit/cl-bunny?branch=master)
-CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [cl-rabbit](https://github.com/lokedhs/cl-rabbit) and inspired by [bunny](https://github.com/ruby-amqp/bunny).
+CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [IOLib](https://github.com/sionescu/iolib) and inspired by [bunny](https://github.com/ruby-amqp/bunny) and [pika](https://github.com/pika/pika).
 **Please use with caution - work in progress, error-handling not so descriptive, API is not always stable**. **Contributions are greatly appreciated!**
 
 ## Installation Notes
 CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
 * [safe-queue](https://github.com/deadtrickster/safe-queue)
 * [cl-events](https://github.com/deadtrickster/cl-events)
-
-While we are working hard to merge our `cl-rabbit` patches to the main repo
-please use this [branch](https://github.com/deadtrickster/cl-rabbit/tree/master1).<br>
-Make sure you are using the latest version of [librabbitmq](https://github.com/alanxz/rabbitmq-c). At least Ubuntu dists usually
-ship very outdated version. Just build it youself if not sure.
-
-If you are on sbcl and experiencing something like reported [here](http://stackoverflow.com/questions/32897952/sending-messages-to-rabbit-mq-using-lisp-inside-a-docker-container)
-```
-CORRUPTION WARNING in SBCL pid 29643(tid 140737353938688):
-Memory fault at 0x7ffff1ef80e0 (pc=0x7ffff25b48fd, sp=0x7ffff2dced00)
-The integrity of this image is possibly compromised.
-Continuing with fingers crossed.
-
-debugger invoked on a SB-SYS:MEMORY-FAULT-ERROR in thread
-#<THREAD "main thread" RUNNING {100504E593}>:
-  Unhandled memory fault at #x7FFFF1EF80E0.
-```
-Try to compile sbcl with statically linked `librabbitmq` and `libffi` first.
-To do this you can go to `src/runtime/GNUmakefile` and
-make sure LINKFLAGS line looks like this:
-```
-LINKFLAGS = -g  -Wl,--whole-archive <YOUR PATH TO>/librabbitmq.a <YOUR PATH TO>/libffi.a -Wl,--no-whole-archive -lcrypto -lssl
-```
-
 
 ## Examples
 #### Foreword
@@ -138,7 +114,7 @@ More examples can be found [here](examples)
 * [Christophe Rhodes](http://christophe.rhodes.io/) for [pipe](http://christophe.rhodes.io/notes/blog/posts/2014/code_walking_for_pipe_sequencing/) macro
 
 ## Copyright
-Copyright (c) 2015 Ilya Khaprov <ilya.khaprov@publitechs.com> and [CONTRIBUTORS](CONTRIBUTORS.md)
+Copyright (c) 2015,2016 Ilya Khaprov <ilya.khaprov@publitechs.com> and [CONTRIBUTORS](CONTRIBUTORS.md)
 
 CL-BUNNY uses a shared copyright model: each contributor holds copyright over their contributions to CL-BUNNY. The project versioning records all such contribution and copyright details.
 
