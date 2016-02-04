@@ -3,7 +3,7 @@
 (defvar *connection* nil
   "Current AMQP connection")
 
-(defparameter *connection-type* 'threaded-librabbitmq-connection)
+(defparameter *connection-type* 'threaded-iolib-connection)
 (defparameter *notification-lambda* nil
   "If not NIL expected to be lambda (lambda) -> bb:promise.")
 

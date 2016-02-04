@@ -34,12 +34,6 @@
 (defmethod exchange-channel ((exchange string))
   nil)
 
-(defun exchange.exists-p (name)
-  (ignore-some-conditions (amqp-error-not-found)
-    (with-channel ()
-      (exchange.declare name
-                        :passive t))))
-
 (defun exchange.declare (exchange &key (type "direct") (passive nil) (durable nil) (auto-delete nil) (internal nil) (nowait nil) (arguments nil) (channel *channel*))
   (channel.send% channel
       (make-instance 'amqp-method-exchange-declare
@@ -60,6 +54,12 @@
                                                   :auto-delete auto-delete
                                                   :internal internal
                                                   :arguments arguments)))))
+
+(defun exchange.exists-p (name)
+  (ignore-some-conditions (amqp-error-not-found)
+    (with-channel ()
+      (exchange.declare name
+                        :passive t))))
 
 (defun exchange.default (&optional (channel *channel*))
   (or
@@ -112,6 +112,7 @@
                      :exchange (exchange-name exchange)
                      :if-unused if-unused
                      :nowait nowait)
+    (deregister-exchange channel exchange)
     exchange))
 
 (defun exchange.bind (destination source &key (routing-key "") (nowait nil) (arguments nil) (channel *channel*))

@@ -39,15 +39,31 @@
                    (:file "bunny-event")))
                  (:file "conditions")
                  (:file "properties-and-headers")
+                 (:module "transport"
+                  :serial t
+                  :components
+                  ((:file "iolib-transport")))
+                 (:module "io"
+                  :serial t
+                  :components
+                  ((:file "frame-and-payload-parser")
+                   (:file "output-frame-queue")))
+                 (:module "base"
+                  :serial t
+                  :components
+                  ((:file "channel-base")
+                   (:file "connection-base")
+                   (:file "threaded-connection")))
                  (:module "connection"
                   :serial t
                   :components
                   ((:file "spec")
                    (:file "pool")
-                   (:file "connection-base")
-                   (:file "threaded-connection")
-                   (:file "librabbitmq")
-                   (:file "channel")))
+                   (:file "iolib-connection")
+                   (:file "iolib-async")
+                   ;; (:file "iolib-sync")
+                   (:file "iolib-threaded")))
+                 (:file "channel")
                  (:file "message")
                  (:file "queue")
                  (:file "exchange")
