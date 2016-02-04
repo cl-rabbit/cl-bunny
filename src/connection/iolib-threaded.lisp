@@ -28,6 +28,7 @@
 (defmethod connection.init ((connection threaded-iolib-connection))
   (setf (slot-value connection 'control-fd) (eventfd:eventfd.new 0 :semaphore t)
         (slot-value connection 'control-mailbox) (safe-queue:make-queue)
+        (slot-value connection 'channel-id-allocator) (new-channel-id-allocator (connection-channel-max connection))
         (slot-value connection 'method-assembler) (make-instance 'method-assembler :max-body-size (- +frame-max+ 9))))
 
 (defmethod close-connection-with-error ((connection iolib-connection) error)
@@ -91,8 +92,6 @@
                                        (iolib:socket-os-fd socket)
                                        :read (lambda (fd e ex)
                                                (declare (ignorable fd e ex))
-                                               (print e)
-                                               (print ex)
                                                (log:debug "Got something to read on connection thread")
                                                (loop for frame in (read-frames)
                                                      as channel = (get-channel connection (frame-channel frame))
@@ -126,6 +125,7 @@
           (handler-bind ((error
                            (lambda (e)
                              (log:error "Unhandled unknown error: ~a" e)
+                             (trivial-backtrace:print-backtrace e)
                              (unless *debug-connection*
                                (throw 'stop-connection e)))))
             (iolib:with-event-base (eb)

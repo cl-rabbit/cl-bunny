@@ -44,7 +44,7 @@
   ;;         auto-delete t))
   ;; todo register exclusive queues
   ;; mark them as invalid on connection close
-  (channel.send%! channel (make-instance 'amqp-method-queue-declare
+  (channel.send% channel (make-instance 'amqp-method-queue-declare
                                         :queue name
                                         :passive passive
                                         :durable durable

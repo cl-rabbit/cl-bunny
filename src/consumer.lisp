@@ -132,25 +132,24 @@
     (let ((*channel* channel))
       (funcall on-cancel consumer))))
 
-(defun subscribe (queue fn  &key (type :async) on-cancel consumer-tag no-local no-ack nowait exclusive arguments (channel *channel*))
-  (execute-in-connection-thread-sync ((channel-connection channel))
-    (let ((reply (channel.send channel (make-instance 'amqp-method-basic-consume
-                                                      :queue (queue-name queue)
-                                                      :consumer-tag consumer-tag
-                                                      :no-local no-local
-                                                      :no-ack no-ack
-                                                      :exclusive exclusive
-                                                      :nowait nowait
-                                                      :arguments arguments))))
-      (add-consumer channel queue
-                    (amqp-method-field-consumer-tag reply) type
+(defun subscribe (queue fn  &key (type :async) on-cancel (consumer-tag "") no-local no-ack nowait exclusive arguments (channel *channel*))
+  (channel.send-with-callback% channel (make-instance 'amqp-method-basic-consume
+                                                    :queue (queue-name queue)
+                                                    :consumer-tag consumer-tag
+                                                    :no-local no-local
+                                                    :no-ack no-ack
+                                                    :exclusive exclusive
+                                                    :nowait nowait
+                                                    :arguments arguments)
+    (add-consumer channel queue
+                  (amqp-method-field-consumer-tag reply) type
+                  (if (eq type :async)
+                      (wrap-async-subscribe-with-channel fn channel)
+                      fn)
+                  (when on-cancel
                     (if (eq type :async)
-                        (wrap-async-subscribe-with-channel fn channel)
-                        fn)
-                    (when on-cancel
-                      (if (eq type :async)
-                          (wrap-async-on-cancel-with-channel on-cancel channel)
-                          on-cancel))))))
+                        (wrap-async-on-cancel-with-channel on-cancel channel)
+                        on-cancel)))))
 
 (defun subscribe-sync (queue &key on-cancel consumer-tag no-local no-ack exclusive arguments (channel *channel*))
   (subscribe queue nil :type :sync

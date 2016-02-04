@@ -75,11 +75,16 @@
 (defgeneric channel.send (channel method)
   (:documentation "API Endpoint, hides transport implementation"))
 
-(defun channel.send (channel method)
+(defun channel.send (channel method &optional sync-callback)
   (multiple-value-bind (sync reply-matcher) (amqp-method-synchronous-p method)
     (if sync
         (let ((promise (make-sync-promise)))
-          (setf (channel-expected-reply channel) (list reply-matcher promise))
+          (setf (channel-expected-reply channel) (list reply-matcher (if sync-callback
+                                                                         (lambda (reply)
+                                                                           (promise.resolve promise 
+                                                                             (funcall sync-callback reply)))
+                                                                         (lambda (reply)
+                                                                           (promise.resolve promise reply)))))
           (connection.send (channel-connection channel) channel method)
           (promise.force promise :timeout *force-timeout*))
         (connection.send (channel-connection channel) channel method))))
@@ -88,6 +93,11 @@
   `(let ((reply (channel.send ,channel ,method)))
      (declare (ignorable reply))
      ,@body))
+
+(defmacro channel.send-with-callback% (channel method &body body)
+  `(channel.send ,channel ,method (lambda (reply)
+                                    (declare (ignorable reply))
+                                    ,@body)))
 
 (defun channel.open (&optional (channel *channel*))
   (channel.send% channel
@@ -99,11 +109,10 @@
   (assert connection)
   (assert (connection-open-p connection) nil 'connection-closed-error :connection connection)
   ;; TODO: if open fails automatically generated channel-id should be released
-  (connection-execute connection connection
-    (channel.open (channel.new :on-error on-error
-                               :connection connection
-                               :channel-id (or channel-id
-                                               (next-channel-id (connection-channel-id-allocator connection)))))))
+  (channel.open (channel.new :on-error on-error
+                             :connection connection
+                             :channel-id (or channel-id
+                                             (next-channel-id (connection-channel-id-allocator connection))))))
 
 (defun channel.flow (active &key (channel *channel*))
   (channel.send% channel
@@ -133,16 +142,15 @@
 
 (defun channel.safe-close (reply-code class-id method-id &key (reply-text "") (channel *channel*))
   (ignore-some-conditions (connection-closed-error network-error)
-    (connection-execute (channel-connection channel) channel
-      (ignore-some-conditions (channel-closed-error)
-        (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
-                                                          :reply-code reply-code
-                                                          :reply-text reply-text
-                                                          :class-id class-id
-                                                          :method-id method-id))))
-          (declare (ignorable reply))
-          (setf (channel-open-p% channel) nil) ;; TODO: <- unwind-protect?
-          (connection.deregister-channel channel))))))
+    (ignore-some-conditions (channel-closed-error)
+      (let ((reply (channel.send channel (make-instance 'amqp-method-channel-close
+                                                        :reply-code reply-code
+                                                        :reply-text reply-text
+                                                        :class-id class-id
+                                                        :method-id method-id))))
+        (declare (ignorable reply))
+        (setf (channel-state channel) :closed) ;; TODO: <- unwind-protect?
+        (connection.deregister-channel channel)))))
 
 (defun channel.close-ok% (channel)
   (channel.send% channel
@@ -157,7 +165,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 |#
 
 (defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
-  (channel.send%! channel
+  (channel.send% channel
       (make-instance 'amqp-method-basic-publish
                      :exchange exchange
                      :routing-key (routing-key routing-key)
@@ -217,12 +225,10 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
     (channel.receive channel method)))
 
 (defmethod channel.receive (channel method)
-  (destructuring-bind (reply-matcher promise) (channel-expected-reply channel)
-    (log:debug reply-matcher)
-    (log:debug promise)
+  (destructuring-bind (reply-matcher callback) (channel-expected-reply channel)
     (when (and reply-matcher (funcall reply-matcher method))
       (setf (channel-expected-reply channel) nil)
-      (promise.resolve promise method))))
+      (funcall callback method))))
 
 (defmethod channel.receive (channel (method amqp-method-channel-close))
   (log:debug "Received channel.close ~a" (amqp-method-field-reply-text method))
