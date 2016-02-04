@@ -26,7 +26,7 @@
                              (assert (equal recv (message-body-string message))))
                            :type :sync))
                        (loop for i from 0 below 1000 do
-                                (consume :one-shot t))))
+                             (consume :one-shot t))))
                    recv)))
           (test-send "Hello World!")
           (is (test-recv-sync) "Hello World!"))))))
