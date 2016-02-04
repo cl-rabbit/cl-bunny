@@ -59,35 +59,35 @@
                                    :start (fap-parser-end-index fap-parser))
                    (declare (ignore _octets))
                    (log:debug "Read: ~a" read)
-                   (unless (= 0 read)
-                     (fap-parser-advance-end fap-parser read)
-                     (collectors:with-appender-output (add-frame)
-                       (loop
-                         :as frame = (fap-parser-advance fap-parser)
-                         :if frame do
-                            (add-frame (prog1 frame
-                                         (log:debug "received frame ~a" frame)))
-                         :else :do
-                            (log:debug "no frame, exiting loop")
-                            (return))))))
+                   (when (= 0 read)
+                     (error "EOF"))
+                   (fap-parser-advance-end fap-parser read)
+                   (collectors:with-appender-output (add-frame)
+                     (loop
+                       :as frame = (fap-parser-advance fap-parser)
+                       :if frame do
+                          (add-frame (prog1 frame
+                                       (log:debug "received frame ~a" frame)))
+                       :else :do
+                          (log:debug "no frame, exiting loop")
+                          (return)))))
                (connection.send% (method)
                  (dolist (frame (method-to-frames method 0 (connection-frame-max% connection)))
                    (enqueue-frame frame)))
                (install-main-reader-and-heartbeat-timer ()
                  (iolib:set-io-handler event-base
-                                      control-fd
-                                      :read (lambda (fd e ex)
-                                              (declare (ignorable fd e ex))
-                                              (eventfd.read control-fd)
-                                              (log:debug "Got lambda to execute on connection thread")
-                                              ;; eventfd is in semaphore mode
-                                              ;; dequeue only once
-                                              (when-let ((thing (safe-queue:dequeue control-mailbox)))
-                                                (log:debug thing)
-                                                (etypecase thing
-                                                  (amqp::frame (enqueue-frame thing))
-                                                  (function (funcall thing))
-                                                  (symbol (iolib:exit-event-loop event-base))))))
+                                       control-fd
+                                       :read (lambda (fd e ex)
+                                               (declare (ignorable fd e ex))
+                                               (eventfd.read control-fd)
+                                               ;; eventfd is in semaphore mode
+                                               ;; dequeue only once
+                                               (when-let ((thing (safe-queue:dequeue control-mailbox)))
+                                                 (log:debug thing)
+                                                 (etypecase thing
+                                                   (amqp::frame (enqueue-frame thing))
+                                                   (function (funcall thing))
+                                                   (symbol (iolib:exit-event-loop event-base))))))
                  (iolib:set-io-handler event-base
                                        (iolib:socket-os-fd socket)
                                        :read (lambda (fd e ex)
@@ -95,7 +95,9 @@
                                                (log:debug "Got something to read on connection thread")
                                                (loop for frame in (read-frames)
                                                      as channel = (get-channel connection (frame-channel frame))
-                                                     unless (typep frame 'heartbeat-frame)
+                                                     unless (when (typep frame 'heartbeat-frame)
+                                                              (log:debug "received heartbeat from server")
+                                                              t)
                                                      if channel do
                                                         (channel.receive-frame channel frame)
                                                      else do
@@ -107,15 +109,18 @@
                                         (cond
                                           ((> (/ (- now (connection-last-server-activity connection)) (connection-heartbeat% connection))
                                               2)
+                                           (receive-from connection :start 0 :Buffer #b"\x0\x0\x0x\0")
+                                           (log:error "Missed heartbeat from server")
                                            (throw 'stop-connection 'transport-error))
-                                          ((> now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
+                                          ((>= now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
                                            (log:debug "Sending HEARTBEAT")
                                            (enqueue-frame heartbeat-frame)))))
-                                    (+ 0.4 (/ (connection-heartbeat% connection) 2))))))
+                                    (max (1- (/ (connection-heartbeat% connection) 2)) 0.4)))))
 
 
         (setf (slot-value connection 'state) :opening)
         (setf socket (iolib:make-socket))
+        (setf (iolib.sockets:socket-option socket :tcp-nodelay) t)
         (iolib:connect (connection-socket connection) (iolib:lookup-hostname (connection-spec-host spec)) :port (connection-spec-port spec) :wait t)
         (write-sequence #b"AMQP\x0\x0\x9\x1" socket)
         (force-output socket)
@@ -131,7 +136,7 @@
             (iolib:with-event-base (eb)
               (setf event-base eb)
               (let ((*event-base* eb))
-                
+
                 (iolib:set-io-handler event-base
                                       (iolib:socket-os-fd socket)
                                       :read (lambda (fd e ex)
@@ -147,13 +152,25 @@
                                                            (ecase (slot-value connection 'state)
                                                              (:waiting-for-connection-start
                                                               (assert (typep method 'amqp-method-connection-start))
-                                                              (connection.send% (make-instance 'amqp-method-connection-start-ok :response " guest guest" :client-properties '()))
+                                                              (connection.send% (make-instance 'amqp-method-connection-start-ok :response " guest guest" :client-properties `(("product" . "CL-BUNNY")
+                                                                                                                                                                                ("information" . "http://cl-rabbit.io/cl-bunny/")
+                                                                                                                                                                                ("platform" . ,(format nil "Runtime: ~A (~A), OS: ~A"
+                                                                                                                                                                                                       (lisp-implementation-type)
+                                                                                                                                                                                                       (lisp-implementation-version)
+                                                                                                                                                                                                       (software-type)))
+                                                                                                                                                                                ("version" . ,(asdf:component-version (asdf:find-system :cl-bunny)))
+                                                                                                                                                                                ("capabilities" . (("connection.blocked" . nil)
+                                                                                                                                                                                                   ("publisher_confirms" . t)
+                                                                                                                                                                                                   ("consumer_cancel_notify" . t)
+                                                                                                                                                                                                   ("exchange_exchange_bindings" . t)
+                                                                                                                                                                                                   ("basic.nack" . t)
+                                                                                                                                                                                                   ("authentication_failure_close" . t))))))
                                                               (setf (slot-value connection 'state) :waiting-for-connection-tune))
                                                              (:waiting-for-connection-tune
                                                               (assert (typep method 'amqp-method-connection-tune))
                                                               (connection.send% (make-instance 'amqp-method-connection-tune-ok :heartbeat (connection-heartbeat% connection)
-                                                                                                                                                    :frame-max (connection-frame-max% connection)
-                                                                                                                                                    :channel-max (connection-channel-max% connection)))
+                                                                                                                               :frame-max (connection-frame-max% connection)
+                                                                                                                               :channel-max (connection-channel-max% connection)))
                                                               (connection.send%  (make-instance 'amqp-method-connection-open))
                                                               (setf (slot-value connection 'state) :waiting-for-connection-open-ok))
                                                              (:waiting-for-connection-open-ok
@@ -164,7 +181,7 @@
                                                               (promise.resolve promise))))))))
 
                 (iolib:event-dispatch event-base)))))
-        (with-write-lock (connection-state-lock connection)
+        (bt:with-lock-held ((connection-state-lock connection))
           (setf (slot-value connection 'state) :closing)
           (event! (connection-on-close% connection) connection)
           (eventfd.close control-fd)
