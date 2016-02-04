@@ -72,9 +72,6 @@
 (defun channel-on-return (&optional (channel *channel*))
   (channel-on-return% channel))
 
-(defgeneric channel.send (channel method)
-  (:documentation "API Endpoint, hides transport implementation"))
-
 (defun channel.send (channel method &optional sync-callback)
   (multiple-value-bind (sync reply-matcher) (amqp-method-synchronous-p method)
     (if sync
