@@ -52,6 +52,10 @@
       (if parsed
           (progn            
             (setf (fap-parser-buffer-index fap-parser) read-buffer-index)
+            (when (= 4096 (fap-parser-end-index fap-parser) (fap-parser-buffer-index fap-parser))
+              (setf (fap-parser-end-index fap-parser) 0
+                    (fap-parser-buffer-index fap-parser) 0))
             (fap-parser-frame fap-parser))
-          (setf (fap-parser-end-index fap-parser) 0
-                (fap-parser-buffer-index fap-parser) 0)))))
+          (progn (setf (fap-parser-end-index fap-parser) 0
+                       (fap-parser-buffer-index fap-parser) 0)
+                 nil)))))
