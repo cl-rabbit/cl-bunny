@@ -67,7 +67,8 @@
                        :as frame = (fap-parser-advance fap-parser)
                        :if frame do
                           (add-frame (prog1 frame
-                                       (log:debug "received frame ~a" frame)))
+                                       (log:debug "received frame ~a" frame)
+                                       (ignore-errors (log:debug "frame payload ~a" (amqp::frame-payload frame)))))
                        :else :do
                           (log:debug "no frame, exiting loop")
                           (return)))))
@@ -168,9 +169,21 @@
                                                               (setf (slot-value connection 'state) :waiting-for-connection-tune))
                                                              (:waiting-for-connection-tune
                                                               (assert (typep method 'amqp-method-connection-tune))
-                                                              (connection.send% (make-instance 'amqp-method-connection-tune-ok :heartbeat (connection-heartbeat% connection)
-                                                                                                                               :frame-max (connection-frame-max% connection)
-                                                                                                                               :channel-max (connection-channel-max% connection)))
+                                                              (connection.send% (make-instance 'amqp-method-connection-tune-ok :heartbeat (setf (connection-heartbeat% connection)
+                                                                                                                                                (if (zerop (amqp-method-field-heartbeat method))
+                                                                                                                                                    (connection-spec-heartbeat-interval spec)
+                                                                                                                                                    (min (amqp-method-field-heartbeat method)
+                                                                                                                                                         (connection-spec-heartbeat-interval spec))))
+                                                                                                                               :frame-max (setf (connection-frame-max% connection)
+                                                                                                                                                (if (zerop (amqp-method-field-frame-max method))
+                                                                                                                                                    (connection-spec-frame-max spec)
+                                                                                                                                                    (min (amqp-method-field-frame-max method)
+                                                                                                                                                         (connection-spec-frame-max spec))))
+                                                                                                                               :channel-max (setf (connection-channel-max% connection)
+                                                                                                                                                  (if (zerop (amqp-method-field-channel-max method))
+                                                                                                                                                      (connection-spec-channel-max spec)
+                                                                                                                                                      (min (amqp-method-field-channel-max method)
+                                                                                                                                                           (connection-spec-channel-max spec))))))
                                                               (connection.send%  (make-instance 'amqp-method-connection-open))
                                                               (setf (slot-value connection 'state) :waiting-for-connection-open-ok))
                                                              (:waiting-for-connection-open-ok

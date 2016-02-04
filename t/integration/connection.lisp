@@ -3,9 +3,9 @@
 (plan 3)
 
 (subtest "Connection parameters"
-  (with-connection "amqp://localhost?frame-max=131070&heartbeat-interval=60&channel-max=256"
+  (with-connection "amqp://localhost?frame-max=131070&heartbeat-interval=30&channel-max=256"
     (is (connection-frame-max) 131070)
-    (is (connection-heartbeat) 60)
+    (is (connection-heartbeat) 30)
     (is (connection-channel-max) 256)))
 
 (subtest "Connection termination corner cases"
@@ -94,7 +94,7 @@
 (subtest "Heartbeat tests"
   (subtest "When client skips more than two heartbeats server should  close connection"
     (is-error
-     (with-connection ("amqp://" :heartbeat 6)
+     (with-connection ("amqp://?heartbeat=6")
        (bunny::execute-in-connection-thread-sync ()
          (sleep 20))
        (with-channel ()))
@@ -102,14 +102,14 @@
 
   (subtest "We actually send heartbeats to the server"
     (ok
-     (with-connection ("amqp://" :heartbeat 6)
+     (with-connection ("amqp://?heartbeat=6")
        (sleep 20)
        (with-channel ())
        t)))
 
   (subtest "Heartbeats help detect closed/aborted connections"
     (let ((closed))
-        (with-connection ("amqp://" :heartbeat 6)
+        (with-connection ("amqp://?heartbeat=6")
           (event+ (connection-on-close)
                   (lambda (connection)
                     (setf closed connection)))

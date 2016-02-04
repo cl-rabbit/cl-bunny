@@ -241,7 +241,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
     (channel.receive channel method)))
 
 (defmethod channel.receive (channel method)
-  (destructuring-bind (reply-matcher callback) (channel-expected-reply channel)
+  (destructuring-bind (&optional reply-matcher callback) (channel-expected-reply channel)
     (when (and reply-matcher (funcall reply-matcher method))
       (setf (channel-expected-reply channel) nil)
       (funcall callback method))))
@@ -259,8 +259,9 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
                                  :channel channel
                                  :class-id (amqp-method-field-class-id method)
                                  :method-id (amqp-method-field-method-id method))))
-      (destructuring-bind (rm callback) (channel-expected-reply channel)
+      (destructuring-bind (&optional rm callback) (channel-expected-reply channel)
         (when rm
+          (setf (channel-expected-reply channel) nil)
           (funcall callback error t)))
       (when (channel-on-error% channel)
         (event! (channel-on-error% channel) error)))))

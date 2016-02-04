@@ -17,6 +17,10 @@
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
    (event-base :reader connection-event-base :initarg :event-base)
+
+   (channel-max :accessor connection-channel-max% :initform +channel-max+)
+   (frame-max :accessor connection-frame-max% :initform +frame-max+)
+   (heartbeat :accessor connection-heartbeat% :initform +heartbeat-interval+)
    ;; events
    (on-close :initform (make-instance 'bunny-event)
              :initarg :on-close
@@ -153,7 +157,7 @@
     (list (parse-with-connection-params-list params))))
 
 (defmacro with-connection (params &body body)
-  (destructuring-bind (spec &key shared (heartbeat 0) (type '*connection-type*)) (parse-with-connection-params params)
+  (destructuring-bind (spec &key shared (type '*connection-type*)) (parse-with-connection-params params)
     (with-gensyms (connection-spec-val shared-val)
       `(let* ((,connection-spec-val ,spec)
               (,shared-val ,shared)
@@ -162,7 +166,7 @@
                                                              'iolib-connection))))
                               (if ,shared-val
                                   (connections-pool.find-or-run (if (eq t ,shared-val) ,connection-spec-val ,shared-val) ,connection-spec-val)
-                                  (connection.open (connection.new ,connection-spec-val :heartbeat ,heartbeat))))))
+                                  (connection.open (connection.new ,connection-spec-val))))))
          (unwind-protect
               (progn
                 ,@body)

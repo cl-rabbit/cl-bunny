@@ -9,7 +9,7 @@
 
         (queue.delete q)
         (queue.delete q)
-        (ok "Not error on second delete")
+        (ok "No error on second delete")
 
         ;; TODO: (is (length (channel-queues)) 0 "Channel has no registered queues")
         ))))
