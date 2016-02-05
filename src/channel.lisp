@@ -254,6 +254,7 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
 
 (defmethod channel.receive (channel (method amqp-method-channel-close))
   (log:debug "Received channel.close ~a" (amqp-method-field-reply-text method))
+  (log:warn "Channel closed by server: ~a" (close-method-to-error channel method))
   (channel.close-ok% channel)
   (setf (channel-open-p% channel) nil)
   (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?

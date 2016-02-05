@@ -248,6 +248,7 @@
   (throw 'stop-connection (values)))
 
 (defmethod channel.receive ((connection threaded-iolib-connection) (method amqp-method-connection-close))
+  (log:warn "Connection closed by server: ~a" (close-method-to-error connection method))
   ;; what to do with enqueued frames?
   ;; probably of-queue must be cleaned from all non-connection frames
   ;; then close-ok should be enqueued
