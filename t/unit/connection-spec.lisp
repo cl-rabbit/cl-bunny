@@ -180,8 +180,8 @@
         (is (connection-spec-heartbeat-interval spec) bunny::+heartbeat-interval+ "Heartbeat interval is default")
         (is (print-amqp-object-to-string spec) "amqp://user:pass@host:10000/vhost?frame-max=256")))
 
-    (subtest "amqp://user:pass@host:10000/vhost?heartbeat-interval=60&channel-max=256"
-      (let ((spec (bunny::make-connection-spec "amqp://user:pass@host:10000/vhost?heartbeat-interval=60&channel-max=256")))
+    (subtest "amqp://user:pass@host:10000/vhost?heartbeat-interval=30&channel-max=256"
+      (let ((spec (bunny::make-connection-spec "amqp://user:pass@host:10000/vhost?heartbeat-interval=30&channel-max=256")))
         (is (connection-spec-login spec) "user")
         (is (connection-spec-password spec) "pass")
         (is (connection-spec-host spec) "host")
@@ -191,8 +191,8 @@
         (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
         (is (connection-spec-channel-max spec) 256 "Channel max is 256")
         (is (connection-spec-frame-max spec) bunny::+frame-max+ "Frame max is default")
-        (is (connection-spec-heartbeat-interval spec) 60 "Heartbeat interval is 60")
-        (is (print-amqp-object-to-string spec) "amqp://user:pass@host:10000/vhost?channel-max=256&heartbeat-interval=60"))))
+        (is (connection-spec-heartbeat-interval spec) 30 "Heartbeat interval is 30")
+        (is (print-amqp-object-to-string spec) "amqp://user:pass@host:10000/vhost?channel-max=256&heartbeat-interval=30"))))
 
   (subtest "Connection list parser tests [without additional params]"
     (subtest "NIL"
@@ -216,7 +216,7 @@
                                                  :use-ipv6-p nil
                                                  :channel-max 256
                                                  :frame-max 4096
-                                                 :heartbeat-interval 60))))
+                                                 :heartbeat-interval 30))))
         (is (connection-spec-login spec) "user")
         (is (connection-spec-password spec) "pass")
         (is (connection-spec-host spec) "host")
@@ -225,8 +225,8 @@
         (is (connection-spec-use-ipv6-p spec) nil "Address is not IPv6")
         (is (connection-spec-channel-max spec) 256 "Channel max is 256")
         (is (connection-spec-frame-max spec) 4096 "Frame max is 4096")
-        (is (connection-spec-heartbeat-interval spec) 60 "Heartbeat interval is 60")
-        (is (print-amqp-object-to-string spec) "amqps://user:pass@host:10000/vhost?channel-max=256&frame-max=4096&heartbeat-interval=60"))))
+        (is (connection-spec-heartbeat-interval spec) 30 "Heartbeat interval is 30")
+        (is (print-amqp-object-to-string spec) "amqps://user:pass@host:10000/vhost?channel-max=256&frame-max=4096&heartbeat-interval=30"))))
 
   (let ((spec (bunny::make-connection-spec "amqp://")))
     (is (bunny::make-connection-spec spec) spec "Make-connection-spec returns the same connection spec")))
