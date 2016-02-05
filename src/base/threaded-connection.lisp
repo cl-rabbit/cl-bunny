@@ -1,6 +1,6 @@
 (in-package :cl-bunny)
 
-(defparameter *force-timeout* nil)
+(defparameter *force-timeout* 5)
 
 (defstruct connection-state-lock
   (rlock (bt:make-lock    "rw-lcok-rlock"))

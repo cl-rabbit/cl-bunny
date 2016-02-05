@@ -47,3 +47,13 @@
 
 (define-condition authentication-error (server-error)
   ())
+
+(defun close-method-to-error (channel method)
+  (let ((error-type (amqp-error-type-from-reply-code (amqp-method-field-reply-code method))))
+    (make-condition error-type
+                    :reply-code (amqp-method-field-reply-code method)
+                    :reply-text (amqp-method-field-reply-text method)
+                    :connection (channel-connection channel)
+                    :channel channel
+                    :class-id (amqp-method-field-class-id method)
+                    :method-id (amqp-method-field-method-id method))))

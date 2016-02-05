@@ -4,7 +4,7 @@
 
 (subtest "Connection errors"
   (subtest "General"
-    (is-error (with-connection ("amqp://localost")) 'transport-error)
+    (is-error (with-connection ("amqp://localost")) 'iolib:resolver-no-name-error)
     ;; it theory it should throw amqp:amqp-error-not-allowed
     ;; since authentication_failure_close is set
     ;; however on my local pc it throws transport-error i.e. authentication_failure_close seems to be ignored
@@ -12,27 +12,31 @@
     ;; on TravisCI it throws connnection-closed.
     (is-error (with-connection ("amqp://localhost/ewgfrmiogtiogwr")) 'error)
 
+    (is-error (with-connection ("amqp://qwe:qwe@localhost")) 'amqp:amqp-error-access-refused)
+
     (with-connection ("amqp://")
       (with-channel ()
-        (iolib.syscalls:close (cl-rabbit::get-sockfd (slot-value bunny:*connection* 'bunny::cl-rabbit-connection)))
-        (is-error (queue.declare) 'bunny:network-error "Network error raised when operation performed on closed socket"))))
-  (subtest "Connection.consume and closed connection"
-    (let ((text))
-      (with-connection ("amqp://" :type 'bunny::librabbitmq-connection)
-        (with-channel ()
-          (let ((x (exchange.default))
-                (q "cl-bunny.examples.hello-world"))
+        (close (bunny::connection-socket *connection*))
+        (is-error (queue.declare) 'connection-closed-error "Network error raised when operation performed on closed socket"))))
 
-            (queue.declare :name q :auto-delete t)
-            (with-consumers
-                ((q
-                  (lambda (message)
-                     (setf text (message-body-string message))
-                     (connection.close :connection (channel-connection (message-channel message))))
-                  :type :sync))
-              (publish x "Hello world!" :routing-key q)
-              (is-error (message-body-string (connection.consume)) 'connection-closed-error)
-              (is text "Hello world!"))))))))
+  ;; (subtest "Connection.consume and closed connection"
+  ;;   (let ((text))
+  ;;     (with-connection ("amqp://" :type 'bunny::librabbitmq-connection)
+  ;;       (with-channel ()
+  ;;         (let ((x (exchange.default))
+  ;;               (q "cl-bunny.examples.hello-world"))
+
+  ;;           (queue.declare :name q :auto-delete t)
+  ;;           (with-consumers
+  ;;               ((q
+  ;;                 (lambda (message)
+  ;;                    (setf text (message-body-string message))
+  ;;                    (connection.close :connection (channel-connection (message-channel message))))
+  ;;                 :type :sync))
+  ;;             (publish x "Hello world!" :routing-key q)
+  ;;             (is-error (message-body-string (connection.consume)) 'connection-closed-error)
+  ;;             (is text "Hello world!")))))))
+  )
 
 (subtest "Channel errors"
   (subtest "Sync channel error"

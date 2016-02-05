@@ -88,7 +88,13 @@
                                                                                (promise.reject promise reply)
                                                                                (promise.resolve promise reply))))))
           (connection.send (channel-connection channel) channel method)
-          (promise.force promise :timeout *force-timeout*))
+          (handler-case
+              (promise.force promise :timeout *force-timeout*)
+            (sync-promise-timeout (e)
+              ;; this usually means connection is closed
+              (if (connection-open-p% (channel-connection channel))
+                  (error e)
+                  (error 'connection-closed-error :connection (channel-connection channel))))))
         (connection.send (channel-connection channel) channel method))))
 
 (defmacro channel.send% (channel method &body body)
@@ -251,17 +257,10 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
   (channel.close-ok% channel)
   (setf (channel-open-p% channel) nil)
   (safe-queue:mailbox-send-message (channel-mailbox channel) method) ;; TODO: maybe check if there any sync consumers first?
-  (let ((error-type (amqp-error-type-from-reply-code (amqp-method-field-reply-code method))))
-    (let ((error (make-condition error-type
-                                 :reply-code (amqp-method-field-reply-code method)
-                                 :reply-text (amqp-method-field-reply-text method)
-                                 :connection (channel-connection channel)
-                                 :channel channel
-                                 :class-id (amqp-method-field-class-id method)
-                                 :method-id (amqp-method-field-method-id method))))
-      (destructuring-bind (&optional rm callback) (channel-expected-reply channel)
-        (when rm
-          (setf (channel-expected-reply channel) nil)
-          (funcall callback error t)))
-      (when (channel-on-error% channel)
-        (event! (channel-on-error% channel) error)))))
+  (let ((error (close-method-to-error channel method)))
+    (destructuring-bind (&optional rm callback) (channel-expected-reply channel)
+      (when rm
+        (setf (channel-expected-reply channel) nil)
+        (funcall callback error t)))
+    (when (channel-on-error% channel)
+      (event! (channel-on-error% channel) error))))
