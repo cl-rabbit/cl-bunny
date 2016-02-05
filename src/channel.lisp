@@ -83,7 +83,6 @@
                                                                                (promise.resolve promise
                                                                                  (funcall sync-callback reply))))
                                                                          (lambda (reply &optional is-error)
-                                                                           (print reply)
                                                                            (if is-error
                                                                                (promise.reject promise reply)
                                                                                (promise.resolve promise reply))))))
