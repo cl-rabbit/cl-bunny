@@ -222,14 +222,19 @@
                        (declare (ignorable id))
                        (setf (channel-state channel) :closed)
                        (safe-queue:mailbox-send-message (channel-mailbox channel)
-                                                        (make-instance 'amqp-method-connection-close)))
+                                                        (make-instance 'amqp-method-connection-close))
+                       (deregister-channel connection channel)
+                       (destructuring-bind (&optional rm callback) (channel-expected-reply channel)
+                         (when rm
+                           (setf (channel-expected-reply channel) nil)
+                           (funcall callback (make-condition 'connection-closed-error) t))))
                      (connection-channels connection))
             (log:debug "closed-all-channels")
-            ;; ;; drain control mailbox
-            ;; (loop for lambda = (safe-queue:dequeue control-mailbox)
-            ;;       while lambda
-            ;;     do (ignore-errors (funcall lambda)))
-            ;; (log:debug "queue drained")
+            ;; drain control mailbox
+            (loop for lambda = (safe-queue:dequeue control-mailbox)
+                  while lambda
+                do (ignore-errors (funcall lambda)))
+            (log:debug "queue drained")
             (setf (slot-value connection 'state) :closed)))))))
 
 (defmethod connection-open-p% ((connection threaded-iolib-connection))

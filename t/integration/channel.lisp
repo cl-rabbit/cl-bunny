@@ -14,11 +14,11 @@
   (with-connection ()
     (with-channel ()
       ;; note on error type: it should be channel-error but old rabbitmq versios return command-invalid
-      (is-error (channel.open) 'amqp:amqp-connection-error "Can't open already opened channel")))
+      (is-error (channel.open) 'connection-closed-error "Can't open already opened channel")))
 
   (with-connection ()
     (with-channel ()
-      (is-error (channel.flow nil) 'amqp:amqp-error-not-implemented "Inactive channels not supported")
+      (is-error (channel.flow nil) 'connection-closed-error "Inactive channels not supported")
       (is (connection-open-p *connection*) nil "Not supported error closes connection")))
 
   (progn

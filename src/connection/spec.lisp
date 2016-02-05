@@ -183,7 +183,7 @@
   (let ((decoded (quri:url-decode-params params)))
     (values (or (check-uint-parameter decoded "channel-max") +channel-max+)
             (or (check-uint-parameter decoded "frame-max") +frame-max+)
-            (or (check-uint-parameter decoded "heartbeat-interval") +heartbeat-interval+)
+            (or (check-uint-parameter decoded "heartbeat-interval") (check-uint-parameter decoded "heartbeat") +heartbeat-interval+)
             (check-boolean-parameter decoded "tls-verify-peer" t)
             (check-boolean-parameter decoded "tls-verify-hostname" t))))
 
