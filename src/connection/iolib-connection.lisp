@@ -6,4 +6,6 @@
    (rb-end :initform nil)
    (last-client-activity :accessor connection-last-client-activity) ;; TODO: monotonic time?
    (last-server-activity :accessor connection-last-server-activity) ;; TODO: monotonic time?))
-   ))
+   (of-queue :initform (make-output-frame-queue))
+   (fap-parser :initform (make-fap-parser))
+   (heartbeat-frame :initform (make-instance 'heartbeat-frame))))
