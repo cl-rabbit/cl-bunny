@@ -1,6 +1,6 @@
 (in-package :cl-bunny)
 
-(defparameter *force-timeout* 5)
+(defparameter *force-timeout* nil)
 
 (defstruct connection-state-lock
   (rlock (bt:make-lock    "rw-lcok-rlock"))
@@ -53,8 +53,9 @@
 (defclass threaded-connection (connection)
   ((control-fd)
    (control-mailbox :reader connection-control-mailbox)
-   (state-lock :initform (bt:make-lock) :reader connection-state-lock)
+   (state-lock :initform (bt:make-recursive-lock) :reader connection-state-lock)
    (execute-in-connection-lambda :initform nil :reader connection-lambda)
+   (on-connect-promise)
    (connection-thread :reader connection-thread)))
 
 (defmethod connection-open-p% ((connection threaded-connection))
@@ -67,7 +68,7 @@
   (with-slots (control-fd control-mailbox execute-in-connection-lambda) connection
     (setf execute-in-connection-lambda
           (lambda (thunk)
-            (bt:with-lock-held ((connection-state-lock connection))
+            (bt:with-recursive-lock-held ((connection-state-lock connection))
               (if (connection-open-p connection)
                   (progn (safe-queue:enqueue thunk control-mailbox)
                          (log:debug "Notifying connection thread")
@@ -83,13 +84,14 @@
             (progn ,@body)))
 
 (defgeneric connection-init (connection))
-(defgeneric connection-loop (connection promise))
+(defgeneric connection-loop (connection))
 
 (defmethod connection.open% ((connection threaded-connection))
   (connection.init connection)
-  (let ((promise (make-sync-promise)))    
-    (setf (slot-value connection 'connection-thread)
-          (bt:make-thread (lambda () (connection-loop connection promise))
+  (let ((promise (make-sync-promise)))
+    (setf (slot-value connection 'on-connect-promise) promise
+     (slot-value connection 'connection-thread)
+          (bt:make-thread (lambda () (connection-loop connection))
                           :name (format nil "CL-BUNNY connection thread. Spec: ~a"
                                         (connection-spec connection))))
     (promise.force promise :timeout *force-timeout*))
@@ -125,7 +127,7 @@
   (if (eq (bt:current-thread) (connection-thread connection))
       (call-next-method)
       (progn
-        (bt:with-lock-held ((connection-state-lock connection))
+        (bt:with-recursive-lock-held ((connection-state-lock connection))
           (assert (connection-open-p connection) () 'connection-closed-error :connection connection))
         (if *notification-lambda*
             (let ((promise (make-async-promise *notification-lambda*)))
