@@ -60,7 +60,7 @@
                   ((:file "spec")
                    (:file "pool")
                    (:file "iolib-connection")
-                   (:file "iolib-async")
+                   ;; (:file "iolib-async")
                    ;; (:file "iolib-sync")
                    (:file "iolib-threaded")))
                  (:file "channel")
