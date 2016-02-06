@@ -3,6 +3,7 @@
 (unless (boundp '+sync-promise-no-values+)
   (define-constant +sync-promise-no-values+ (gensym)))
 
+(defparameter *force-timeout* nil)
 
 ;; represents sharec connection call for regular sync threads
 (defclass sync-promise ()
