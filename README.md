@@ -71,16 +71,14 @@ If you are new to RabbitMQ you may find the following links useful:
       (subscribe q2 (lambda (message)
                       (log:info "~a received ~a" q2 (message-body-string message))))
 
-      (->
-        x
-        (publish "8 cores/Linux" :properties '(:headers (("os" . "linux")
-                                                         ("cores" . 8))))
-        (publish "8 cores/Linux" :properties '(:headers (("os" . "linux")
-                                                         ("cores" . 8))))
-        (publish "8 cores/OS X"  :properties '(:headers (("os" . "osx")
-                                                         ("cores" . 8))))
-        (publish "4 cores/Linux" :properties '(:headers (("os" . "linux")
-                                                         ("cores" . 4)))))
+      (publish x "8 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                       ("cores" . 8))))
+      (publish x "8 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                       ("cores" . 8))))
+      (publish x "8 cores/OS X"  :properties '(:headers (("os" . "osx")
+                                                       ("cores" . 8))))
+      (publish x "4 cores/Linux" :properties '(:headers (("os" . "linux")
+                                                       ("cores" . 4))))
 
       (log:info "Waiting...")
       (sleep 3)
