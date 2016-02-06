@@ -36,8 +36,9 @@
         (sb-thread:make-thread (lambda (connection)
                                  (bunny::execute-in-connection-thread (connection)
                                    (sleep 2)
-                                   (throw 'stop-connection nil)))
+                                   (throw 'bunny::stop-connection nil)))
                                :arguments (list *connection*))
+        (sleep 1)
         (is-error (queue.declare) 'connection-closed-error
                   "If connection closed before receiving sync reply connection-closed-error signaled"))))
 
