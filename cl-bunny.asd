@@ -15,7 +15,6 @@
                "string-case"
                "cl-amqp"
                "iolib"
-               "cl-rabbit"
                "quri"
                "lparallel"
                "safe-queue"
