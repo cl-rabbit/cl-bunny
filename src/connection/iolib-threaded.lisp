@@ -78,7 +78,7 @@
       (declare (ignore _octets))
       (log:debug "Read: ~a" read)
       (when (= 0 read)
-        (error "EOF"))
+        (close-connection-with-error connection "Unexpected eof")) ;; TODO: specialize error
       (fap-parser-advance-end fap-parser read)
       (collectors:with-appender-output (add-frame)
         (loop
