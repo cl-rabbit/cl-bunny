@@ -52,8 +52,8 @@
     (is-error
      (with-connection ("amqp://?heartbeat=2")
        (bunny::execute-in-connection-thread ()
-         (sleep 6))
-       (sleep 10)
+         (sleep 10))
+       (sleep 15)
        (with-channel ()))
      'connection-closed-error))
 
