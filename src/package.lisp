@@ -79,6 +79,8 @@
            #:connection-heartbeat
            #:connection-server-properties
            #:connection-on-close
+           #:connection-on-blocked
+           #:connection-on-unblocked
 
            #:*channel*
            #:channel-id
