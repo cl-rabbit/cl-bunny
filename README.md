@@ -38,10 +38,15 @@ If you are new to RabbitMQ you may find the following links useful:
 ####  Error handling
 ```lisp
 (with-connection ()
-    (with-channel ()
-      (handler-case
-          (channel.open)
-        (amqp:amqp-error-command-invalid () (print "Can't open already opened channel")))))
+  (with-channel ()
+    (handler-case
+        (channel.open)
+      (connection-closed-error () (print "Can't open already opened channel")))))
+-->
+<WARN> [17:10:39] bunny iolib-threaded.lisp (channel.receive threaded-iolib-connection amqp-method-connection-close) -
+ Connection closed by server: AMQP-ERROR-CHANNEL-ERROR[504, CHANNEL_ERROR - second 'channel.open' seen] in response to AMQP-METHOD-CHANNEL-OPEN
+"Can't open already opened channel"
+"Can't open already opened channel"
 ```
 
 #### Headers Exchange
