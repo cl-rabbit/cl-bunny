@@ -44,6 +44,9 @@
       (setf (sync-promise-error promise) error)
       (notify-sync-promise-resolved promise))))
 
+(defmethod promise-finished-p ((promise sync-promise))
+  (sync-promise-resolved-or-rejected-p promise))
+
 (define-condition sync-promise-timeout (error)
   ())
 

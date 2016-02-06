@@ -17,3 +17,6 @@
 (defmethod promise.resolve% ((promise async-promise) values)
   (assert (not (bb:promise-finished-p promise)))
   (funcall (async-promise-notify-lambda promise) (lambda () (apply #'bb::finish promise values))))
+
+(defmethod promise-finished-p ((promise async-promise))
+  (bb:promise-finished-p promise))
