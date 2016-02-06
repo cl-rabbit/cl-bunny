@@ -8,4 +8,20 @@
    (last-server-activity :accessor connection-last-server-activity) ;; TODO: monotonic time?))
    (of-queue :initform (make-output-frame-queue))
    (fap-parser :initform (make-fap-parser))
-   (heartbeat-frame :initform (make-instance 'heartbeat-frame))))
+   (heartbeat-frame :initform (make-instance 'heartbeat-frame))
+
+   ;;events
+   (on-blocked :initform (make-instance 'bunny-event)
+               :initarg :on-close
+               :accessor connection-on-blocked%)
+   (on-unblocked :initform (make-instance 'bunny-event)
+                 :initarg :on-close
+                 :accessor connection-on-unblocked%)))
+
+
+
+(defun connection-on-blocked (&optional (connection *connection*))
+  (connection-on-blocked% connection))
+
+(defun connection-on-unblocked (&optional (connection *connection*))
+  (connection-on-unblocked% connection))

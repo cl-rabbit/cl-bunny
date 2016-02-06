@@ -151,7 +151,7 @@
                                                                                                         (lisp-implementation-version)
                                                                                                         (software-type)))
                                                                                  ("version" . ,(asdf:component-version (asdf:find-system :cl-bunny)))
-                                                                                 ("capabilities" . (("connection.blocked" . nil)
+                                                                                 ("capabilities" . (("connection.blocked" . t)
                                                                                                     ("publisher_confirms" . t)
                                                                                                     ("consumer_cancel_notify" . t)
                                                                                                     ("exchange_exchange_bindings" . t)
@@ -285,6 +285,11 @@
     (send-to-connection-thread (connection)
       frame)))
 
+(defmethod channel.receive ((connection threaded-iolib-connection) (method amqp-method-connection-blocked))
+  (event! (connection-on-blocked% connection) connection (amqp-method-field-reason method)))
+
+(defmethod channel.receive ((connection threaded-iolib-connection) (method amqp-method-connection-unblocked))
+  (event! (connection-on-unblocked% connection) connection))
 
 (defmethod channel.receive ((connection threaded-iolib-connection) (method amqp-method-connection-close-ok))
   (call-next-method)
