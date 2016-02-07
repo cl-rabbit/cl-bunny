@@ -69,10 +69,11 @@
 
 (defmethod receive-from ((socket ssl-socket) &key buffer (start 0) (end (length buffer)) flags)
   (declare (ignore flags))
+  (check-bounds buffer start end)
   (let ((nbytes (with-pointer-to-vector-data (ptr buffer)
                   (unless (= 0 start)
                     (cffi:incf-pointer ptr start))
-                  (cl+ssl::ssl-read (ssl-socket-ctx socket) ptr (or end (length buffer))))))
+                  (cl+ssl::ssl-read (ssl-socket-ctx socket) ptr (- end start)))))
     (if (plusp nbytes)
         (values buffer nbytes)
         (let ((error (cl+ssl::ssl-get-error (ssl-socket-ctx socket) nbytes)))
@@ -90,10 +91,11 @@
                                                &key (start 0) (end (length buffer)))
 
   (declare (ignore args))
+  (check-bounds buffer start end)
   (let ((nbytes (with-pointer-to-vector-data (ptr buffer)
                   (when (and start (not (= 0 start)))
                     (cffi:incf-pointer ptr start))
-                  (cl+ssl::ssl-write (ssl-socket-ctx socket) ptr (or end (length buffer))))))
+                  (cl+ssl::ssl-write (ssl-socket-ctx socket) ptr (- end start)))))
     (if (plusp nbytes)
         nbytes
         (let ((error (cl+ssl::ssl-get-error (ssl-socket-ctx socket) nbytes)))
