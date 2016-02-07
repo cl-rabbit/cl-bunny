@@ -3,15 +3,6 @@
 (amqp:enable-binary-string-syntax)
 (cl-interpol:enable-interpol-syntax)
 
-(defmethod send-to :after ((connection iolib-connection) buffer &key start end)
-  (setf (connection-last-client-activity connection) (get-universal-time)))
-
-(defmethod receive-from :around ((connection iolib-connection) &key buffer start)
-  (multiple-value-bind (buffer read) (call-next-method)
-    (unless (= 0 read)
-      (setf (connection-last-server-activity connection) (get-universal-time)))
-    (values buffer read)))
-
 (defmethod connection.new% ((type (eql 'iolib-connection)) spec pool-tag)
   (let ((connection (make-instance 'iolib-connection :spec spec
                                                      :pool-tag pool-tag)))

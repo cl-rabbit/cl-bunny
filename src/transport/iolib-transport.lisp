@@ -19,6 +19,8 @@
     (handler-case
         (multiple-value-bind (_octets read) (iolib:receive-from (connection-socket connection) :buffer buffer :start start)
           (declare (ignore _octets))
+          (unless (= 0 read)
+            (setf (connection-last-server-activity connection) (get-universal-time)))
           (funcall callback read))
       (iolib.sockets::ssl-error-want-read ()
         (setf (slot-value connection 'want-read)
@@ -39,6 +41,7 @@
     (handler-case
         (let ((sent
                 (iolib:send-to (connection-socket connection) buffer :start start :end end)))
+          (setf (connection-last-client-activity connection) (get-universal-time))
           (funcall callback sent))
       (iolib.sockets::ssl-error-want-read ()
         (setf (slot-value connection 'want-read)
