@@ -1,8 +1,15 @@
-(ql:quickload :cl+ssl)
+(in-package :iolib.sockets)
 
 (cl-interpol:enable-interpol-syntax)
 
-(in-package :iolib.sockets)
+(define-condition ssl-error-want-read ()
+  ())
+
+(define-condition ssl-error-want-write ()
+  ())
+
+(define-condition ssl-error-zero-return ()
+  ())
 
 (let ((ssl-ctx))
   (defun ssl-context ()
