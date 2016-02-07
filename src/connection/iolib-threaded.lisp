@@ -112,7 +112,6 @@
                            (cond
                              ((> (/ (- now (connection-last-server-activity connection)) (connection-heartbeat% connection))
                                  2)
-                              (receive-from connection :start 0 :Buffer #b"\x0\x0\x0x\0")
                               (log:error "Missed heartbeat from server")
                               (throw 'stop-connection 'transport-error))
                              ((>= now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
