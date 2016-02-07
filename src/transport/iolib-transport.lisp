@@ -2,6 +2,7 @@
 
 (defclass iolib-transport ()
   ((socket :accessor connection-socket)
+   (event-base :reader connection-event-base :initarg :event-base)
    (writer :initform nil)
    (reader :initform nil)
    (want-write :initform nil)
@@ -54,31 +55,6 @@
                 (setf (slot-value connection 'want-write) nil)
                 (send-to connection buffer callback :start start :end end)))))))
 
-(defun socket-writeable (socket)
-  (bb:with-promise (resolve reject)
-    (iolib:set-io-handler *event-base* (iolib:socket-os-fd socket) :write
-                          (lambda (fd e ex)
-                            (iolib:remove-fd-handlers *event-base* (iolib:socket-os-fd socket) :write t)
-                            (resolve)))))
-
-(defun socket-readable (socket)
-  (bb:with-promise (resolve reject)
-    (iolib:set-io-handler *event-base* (iolib:socket-os-fd socket) :read
-                          (lambda (fd e ex)
-                            (iolib:remove-fd-handlers *event-base* (iolib:socket-os-fd socket) :read t)
-                            (resolve)))))
-
-(defun socket.check (socket)
-  (let ((errcode (iolib:socket-option socket :error)))
-    (unless (zerop errcode)
-      (error "Unable to connect"))))
-
-(defmethod transport.open ((connection iolib-transport) address port)
-  (setf (connection-socket connection) (iolib:make-socket))
-  (iolib:connect (connection-socket connection) address :port port :wait nil)
-  (bb:wait (socket-writeable (connection-socket connection))
-    (socket.check (connection-socket connection))))
-
 (defmethod transport.set-writer ((connection iolib-transport) writer)
   (if (slot-value connection 'writer)
       (error "Transport writer already set"))
@@ -122,3 +98,29 @@
                             (iolib:socket-os-fd (connection-socket connection))
                             :read t)
   (setf (slot-value connection 'reader) nil))
+
+
+;; (defun socket-writeable (socket)
+;;   (bb:with-promise (resolve reject)
+;;     (iolib:set-io-handler *event-base* (iolib:socket-os-fd socket) :write
+;;                           (lambda (fd e ex)
+;;                             (iolib:remove-fd-handlers *event-base* (iolib:socket-os-fd socket) :write t)
+;;                             (resolve)))))
+
+;; (defun socket-readable (socket)
+;;   (bb:with-promise (resolve reject)
+;;     (iolib:set-io-handler *event-base* (iolib:socket-os-fd socket) :read
+;;                           (lambda (fd e ex)
+;;                             (iolib:remove-fd-handlers *event-base* (iolib:socket-os-fd socket) :read t)
+;;                             (resolve)))))
+
+;; (defun socket.check (socket)
+;;   (let ((errcode (iolib:socket-option socket :error)))
+;;     (unless (zerop errcode)
+;;       (error "Unable to connect"))))
+
+;; (defmethod transport.open ((connection iolib-transport) address port)
+;;   (setf (connection-socket connection) (iolib:make-socket))
+;;   (iolib:connect (connection-socket connection) address :port port :wait nil)
+;;   (bb:wait (socket-writeable (connection-socket connection))
+;;     (socket.check (connection-socket connection))))
