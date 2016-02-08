@@ -1,4 +1,4 @@
-# CL-BUNNY [![Build Status](https://travis-ci.org/cl-rabbit/cl-bunny.svg)](https://travis-ci.org/cl-rabbit/cl-bunny) [![Coverage Status](https://coveralls.io/repos/cl-rabbit/cl-bunny/badge.svg?branch=master&service=github)](https://coveralls.io/github/cl-rabbit/cl-bunny?branch=master)
+# CL-BUNNY [![Build Status](https://travis-ci.org/cl-rabbit/cl-bunny.svg?branch=master)](https://travis-ci.org/cl-rabbit/cl-bunny) [![Coverage Status](https://coveralls.io/repos/cl-rabbit/cl-bunny/badge.svg?branch=master&service=github)](https://coveralls.io/github/cl-rabbit/cl-bunny?branch=master)
 CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [IOLib](https://github.com/sionescu/iolib) and inspired by [bunny](https://github.com/ruby-amqp/bunny) and [pika](https://github.com/pika/pika).
 **Please use with caution - work in progress, error-handling not so descriptive, API is not always stable**. **Contributions are greatly appreciated!**
 
