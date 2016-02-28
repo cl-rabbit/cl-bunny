@@ -105,7 +105,7 @@
                        (max (1- (/ (connection-heartbeat% connection) 2)) 0.4)))))
 
 (defun perform-handshake (connection callback)
-  (with-slots (on-connect-promise event-base socket spec) connection
+  (with-slots (on-connect-promise spec) connection
     (transport.set-reader connection
      (lambda ()
        (read-frames connection
@@ -176,7 +176,7 @@
                                                  (promise.resolve on-connect-promise))))))))))))
 
 (defun install-main-readers (connection)
-  (with-slots (control-fd control-mailbox event-base socket) connection
+  (with-slots (control-fd control-mailbox event-base) connection
     (iolib:set-io-handler event-base
                           control-fd
                           :read (lambda (fd e ex)
