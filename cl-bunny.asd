@@ -6,7 +6,7 @@
 (in-package :cl-bunny.system)
 
 (defsystem :cl-bunny
-  :version "0.3.0"
+  :version "0.4.5"
   :description "High-level interface for cl-rabbit"
   :maintainer "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :author "Ilya Khaprov <ilya.khaprov@publitechs.com>"
