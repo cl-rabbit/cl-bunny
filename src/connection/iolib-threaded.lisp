@@ -246,6 +246,10 @@
                      (setf (channel-expected-reply channel) nil)
                      (funcall callback (make-condition 'connection-closed-error) t))))
                (connection-channels connection))
+      (destructuring-bind (&optional rm callback) (channel-expected-reply connection)
+        (when rm
+          (setf (channel-expected-reply connection) nil)
+          (funcall callback (make-condition 'connection-closed-error) t)))
       (log:debug "closed-all-channels")
       ;; drain control mailbox
       (loop for lambda = (safe-queue:dequeue control-mailbox)
