@@ -101,8 +101,6 @@
            #:tx.commit
            #:tx.rollback
 
-           #:exchange-on-return
-
            #:queue-name
            #:queue-server-named-p
            #:queue-durable-p
@@ -123,6 +121,14 @@
            #:queue.message-count
            #:queue.consumer-count
 
+           #:exchange-channel
+           #:exchange-name
+           #:exchange-type
+           #:exchange-durable-p
+           #:exchange-auto-delete-p
+           #:exchange-internal-p
+           #:exchange-arguments
+           #:exchange-on-return
            #:exchange.exists-p
            #:exchange.default
            #:exchange.topic
