@@ -178,9 +178,11 @@ TODO: promote :prefetch-size and prefetch-count to channel slots
                                                  2
                                                  1))
       (remf properties :persistent))
-    (apply #'make-instance 'amqp-basic-class-properties properties)))
+    (normalize-properties (apply #'make-instance 'amqp-basic-class-properties properties))))
 
 (defmethod normalize-properties ((properties amqp-basic-class-properties))
+  (if-let ((reply-to (ignore-errors (amqp:amqp-property-reply-to properties))))
+    (setf (amqp:amqp-property-reply-to properties) (queue-name reply-to)))
   properties)
 
 (defmethod channel.publish (channel content exchange &key (routing-key "") (mandatory nil) (immediate nil) (properties (make-instance 'amqp-basic-class-properties)) &allow-other-keys)
