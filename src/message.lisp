@@ -58,4 +58,5 @@
                    :requeue requeue)))
 
 (defun message-body-string (message &optional (encoding :utf-8))
-  (babel:octets-to-string (message-body message) :encoding encoding))
+  (if-let ((body (message-body message)))
+    (babel:octets-to-string body :encoding encoding)))
