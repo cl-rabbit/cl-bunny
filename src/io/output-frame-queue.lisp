@@ -8,7 +8,7 @@
   (current-frame-position 0)
   (state :idle))
 
-(defun get-frame-bytes (frame)
+(defmethod get-frame-bytes (frame)
   (let ((obuffer (amqp:new-obuffer)))
     (amqp:frame-encoder frame obuffer)
     (amqp:obuffer-get-bytes obuffer)))

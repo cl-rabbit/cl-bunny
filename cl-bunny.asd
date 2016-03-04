@@ -48,7 +48,8 @@
                  (:module "io"
                   :serial t
                   :components
-                  ((:file "frame-and-payload-parser")
+                  ((:file "frames")
+                   (:file "frame-and-payload-parser")
                    (:file "output-frame-queue")))
                  (:module "base"
                   :serial t

@@ -38,15 +38,16 @@
                        (log:error "Unhandled unknown error: ~a" e)
                        (trivial-backtrace:print-backtrace e)
                        (promise.reject on-connect-promise e)
-                       (throw 'stop-connection nil))))
+                       (unless *debug-connection*
+                         (throw 'stop-connection nil)))))
       (setf (slot-value connection 'state) :opening)
       (setf socket (if (connection-spec-use-tls-p spec)
                        (make-instance 'iolib.sockets::ssl-socket :protocol :default)
                        (iolib:make-socket)))
       (setf (iolib.sockets:socket-option socket :tcp-nodelay) t)
       (iolib:connect (connection-socket connection) (iolib:lookup-hostname (connection-spec-host spec)) :port (connection-spec-port spec) :wait t)
-      (send-to connection #b"AMQP\x0\x0\x9\x1" :start 0)
-      (setf (slot-value connection 'state) :waiting-for-connection-start))))
+      (enqueue-frame connection +amqp-frame+)
+      (setf (slot-value connection 'state) :waiting-for-connection-start) :start 0)))
 
 (defun enqueue-frame (connection frame)
   (with-slots (of-queue) connection
@@ -89,7 +90,7 @@
     (find "PLAIN" mechanisms :test #'equal)))
 
 (defun maybe-install-heartbeat-timer (connection)
-  (with-slots (heartbeat-frame event-base) connection
+  (with-slots (event-base) connection
     (unless (= 0 (connection-heartbeat% connection))
       (iolib:add-timer event-base
                        (lambda ()
@@ -101,10 +102,10 @@
                               (throw 'stop-connection 'transport-error))
                              ((>= now (+ (connection-last-client-activity connection) (connection-heartbeat% connection)))
                               (log:debug "Sending HEARTBEAT")
-                              (enqueue-frame connection heartbeat-frame)))))
+                              (enqueue-frame connection +heartbeat-frame+)))))
                        (max (1- (/ (connection-heartbeat% connection) 2)) 0.4)))))
 
-(defun perform-handshake (connection callback)
+(defun perform-handshake (connection)
   (with-slots (on-connect-promise spec) connection
     (transport.set-reader connection
      (lambda ()
@@ -172,7 +173,7 @@
                                                  (assert (typep method 'amqp-method-connection-open-ok))
                                                  (setf (slot-value connection 'state) :open)
                                                  (transport.remove-reader connection)
-                                                 (funcall callback)
+                                                 (install-main-readers connection)
                                                  (promise.resolve on-connect-promise))))))))))))
 
 (defun install-main-readers (connection)
@@ -248,7 +249,6 @@
   (with-slots (event-base) connection
     (unwind-protect
          (catch 'stop-connection
-           (open-socket-and-say-hello connection)
            (handler-bind ((error
                             (lambda (e)
                               (log:error "Unhandled unknown error: ~a" e)
@@ -257,9 +257,8 @@
                                 (throw 'stop-connection e)))))
              (iolib:with-event-base (eb)
                (setf event-base eb)
-               (perform-handshake connection
-                                  (lambda ()
-                                    (install-main-readers connection)))
+               (open-socket-and-say-hello connection)
+               (perform-handshake connection)
                (iolib:event-dispatch event-base))))
 
       (shutdown-connection connection))))
