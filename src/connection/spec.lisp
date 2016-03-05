@@ -19,7 +19,7 @@
   (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32))
   (tls-cert nil :type (or null pathname string (nibbles:octet-vector)))
   (tls-key nil :type (or null pathname string (nibbles:octet-vector)))
-  (tls-ca nil :type (or null pathname string (nibbles:octet-vector)))
+  (tls-ca :default :type (or null (member :default) pathname string (nibbles:octet-vector)))
   (tls-verify-peer t :type boolean)
   (tls-verify-hostname t :type boolean))
 
@@ -74,6 +74,9 @@
             changeset))
     (unless (connection-spec-tls-verify-hostname spec)
       (push (cons "tls-verify-hostname" "false")
+            changeset))
+    (unless (eq :default (connection-spec-tls-ca spec))
+      (push (cons "tls-ca" (connection-spec-tls-ca spec))
             changeset))
     (reverse changeset)))
 
@@ -150,16 +153,16 @@
 
 (defmethod check-connection-parameters ((params (eql nil)))
   (declare (ignore params))
-  (values +channel-max+ +frame-max+ +heartbeat-interval+ t t))
+  (values +channel-max+ +frame-max+ +heartbeat-interval+ t t :default))
 
 (defun check-uint-parameter (params name)
   (let* ((raw-value (assoc-value params name :test #'string-equal)))
     (when raw-value
       (let ((value (ignore-errors (parse-integer raw-value))))
         (unless value
-          (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+          (error "Invalid parameter ~:(~s~) value ~s" name raw-value)) ;; TODO: specialize error
         (when (< value 0)
-          (error "Invalid parameter ~a value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
+          (error "Invalid parameter ~:(~s~) value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
         value))))
 
 (defun parse-boolean (raw-value)
@@ -167,7 +170,8 @@
     ("t" (values t t))
     ("nil" (values t nil))
     ("true" (values t t))
-    ("false" (values t nil))))
+    ("false" (values t nil))
+    (t (values nil))))
 
 (defun check-boolean-parameter (params name default)
   (let* ((raw-value (assoc-value params name :test #'string-equal)))
@@ -175,9 +179,12 @@
         (multiple-value-bind (parsed value)
             (parse-boolean raw-value)
           (unless parsed
-            (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+            (error "Invalid boolean parameter ~:(~s~) value ~s" name raw-value)) ;; TODO: specialize error
           value)
       default)))
+
+(defun check-string-parameter (params name default)
+  (or (assoc-value params name :test #'string-equal) default))
 
 (defmethod check-connection-parameters ((params string))
   (let ((decoded (quri:url-decode-params params)))
@@ -185,7 +192,8 @@
             (or (check-uint-parameter decoded "frame-max") +frame-max+)
             (or (check-uint-parameter decoded "heartbeat-interval") (check-uint-parameter decoded "heartbeat") +heartbeat-interval+)
             (check-boolean-parameter decoded "tls-verify-peer" t)
-            (check-boolean-parameter decoded "tls-verify-hostname" t))))
+            (check-boolean-parameter decoded "tls-verify-hostname" t)
+            (check-string-parameter decoded "tls-ca" :default))))
 
 ;; see https://www.rabbitmq.com/uri-spec.html
 (defmethod make-connection-spec ((raw string))
@@ -198,7 +206,7 @@
           (vhost (check-connection-string-vhost path)))
       (multiple-value-bind (host ipv6) (check-connection-string-host host)
         (multiple-value-bind (channel-max frame-max heartbeat-interval
-                              tls-verify-peer tls-verify-hostname)
+                              tls-verify-peer tls-verify-hostname tls-ca)
             (check-connection-parameters query)
           (make-connection-spec% :use-tls-p use-tls
                                  :use-ipv6-p ipv6
@@ -211,7 +219,8 @@
                                  :frame-max frame-max
                                  :heartbeat-interval heartbeat-interval
                                  :tls-verify-peer tls-verify-peer
-                                 :tls-verify-hostname tls-verify-hostname))))))
+                                 :tls-verify-hostname tls-verify-hostname
+                                 :tls-ca tls-ca))))))
 
 (defmethod make-connection-spec ((raw list))
   (apply #'make-connection-spec% raw))

@@ -8,7 +8,7 @@
   (current-frame-position 0)
   (state :idle))
 
-(defun get-frame-bytes (frame)
+(defmethod get-frame-bytes (frame)
   (let ((obuffer (amqp:new-obuffer)))
     (amqp:frame-encoder frame obuffer)
     (amqp:obuffer-get-bytes obuffer)))
@@ -36,24 +36,22 @@
            (frame-bytes (get-frame-bytes frame)))
       (setf (output-frame-queue-current-frame-bytes of-queue) frame-bytes
             (output-frame-queue-current-frame-position of-queue) 0)))
-  (let ((sent
-          (send-to  connection (output-frame-queue-current-frame-bytes of-queue)
-                    :start (output-frame-queue-current-frame-position of-queue))))
-    (incf (output-frame-queue-current-frame-position of-queue) sent)
+  (send-to connection (output-frame-queue-current-frame-bytes of-queue)
+           (lambda (sent)
+             (incf (output-frame-queue-current-frame-position of-queue) sent)
 
-    (when (= (output-frame-queue-current-frame-position of-queue)
-             (length (output-frame-queue-current-frame-bytes of-queue)))      
-      (setf (output-frame-queue-current-frame-bytes of-queue) nil
-            (output-frame-queue-current-frame-position of-queue) 0)
-      (if (= 0 (output-frame-queue-count of-queue))
-          (progn
-            ;; empty queue: uninstall io-handler, set state to idle
-            (log:debug "Removing :write io handler")
-            (iolib:remove-fd-handlers (connection-event-base connection)
-                                      (iolib:socket-os-fd (connection-socket connection))
-                                      :write t)
-            (setf (output-frame-queue-state of-queue) :idle))
-          (progn
-            ;; we have more frames queued
-            ;; lets try to send something immediately
-            (send-queued-frames connection of-queue))))))
+             (when (= (output-frame-queue-current-frame-position of-queue)
+                      (length (output-frame-queue-current-frame-bytes of-queue)))
+               (setf (output-frame-queue-current-frame-bytes of-queue) nil
+                     (output-frame-queue-current-frame-position of-queue) 0)
+               (if (= 0 (output-frame-queue-count of-queue))
+                   (progn
+                     ;; empty queue: uninstall io-handler, set state to idle
+                     (log:debug "Removing :write io handler")
+                     (transport.remove-writer connection)
+                     (setf (output-frame-queue-state of-queue) :idle))
+                   (progn
+                     ;; we have more frames queued
+                     ;; lets try to send something immediately
+                     (send-queued-frames connection of-queue)))))
+           :start (output-frame-queue-current-frame-position of-queue)))

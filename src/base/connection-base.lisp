@@ -16,7 +16,6 @@
    (channels :type hash-table
              :initform (make-hash-table :synchronized t)
              :reader connection-channels)
-   (event-base :reader connection-event-base :initarg :event-base)
 
    (channel-max :accessor connection-channel-max% :initform +channel-max+)
    (frame-max :accessor connection-frame-max% :initform +frame-max+)

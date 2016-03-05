@@ -15,6 +15,7 @@
                "string-case"
                "cl-amqp"
                "iolib"
+               "cl+ssl"
                "quri"
                "lparallel"
                "safe-queue"
@@ -42,11 +43,13 @@
                  (:module "transport"
                   :serial t
                   :components
-                  ((:file "iolib-transport")))
+                  ((:file "iolib-ssl-socket")
+                   (:file "iolib-transport")))
                  (:module "io"
                   :serial t
                   :components
-                  ((:file "frame-and-payload-parser")
+                  ((:file "frames")
+                   (:file "frame-and-payload-parser")
                    (:file "output-frame-queue")))
                  (:module "base"
                   :serial t
