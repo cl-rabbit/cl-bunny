@@ -75,6 +75,9 @@
     (unless (connection-spec-tls-verify-hostname spec)
       (push (cons "tls-verify-hostname" "false")
             changeset))
+    (unless (eq :default (connection-spec-tls-ca spec))
+      (push (cons "tls-ca" (connection-spec-tls-ca spec))
+            changeset))
     (reverse changeset)))
 
 (defun render-connection-parameters (spec stream)
@@ -179,13 +182,17 @@
           value)
       default)))
 
+(defun check-string-parameter (params name default)
+  (or (assoc-value params name :test #'string-equal) default))
+
 (defmethod check-connection-parameters ((params string))
   (let ((decoded (quri:url-decode-params params)))
     (values (or (check-uint-parameter decoded "channel-max") +channel-max+)
             (or (check-uint-parameter decoded "frame-max") +frame-max+)
             (or (check-uint-parameter decoded "heartbeat-interval") (check-uint-parameter decoded "heartbeat") +heartbeat-interval+)
             (check-boolean-parameter decoded "tls-verify-peer" t)
-            (check-boolean-parameter decoded "tls-verify-hostname" t))))
+            (check-boolean-parameter decoded "tls-verify-hostname" t)
+            (check-string-parameter decoded "tls-ca" :default))))
 
 ;; see https://www.rabbitmq.com/uri-spec.html
 (defmethod make-connection-spec ((raw string))
@@ -198,7 +205,7 @@
           (vhost (check-connection-string-vhost path)))
       (multiple-value-bind (host ipv6) (check-connection-string-host host)
         (multiple-value-bind (channel-max frame-max heartbeat-interval
-                              tls-verify-peer tls-verify-hostname)
+                              tls-verify-peer tls-verify-hostname tls-ca)
             (check-connection-parameters query)
           (make-connection-spec% :use-tls-p use-tls
                                  :use-ipv6-p ipv6
@@ -211,7 +218,8 @@
                                  :frame-max frame-max
                                  :heartbeat-interval heartbeat-interval
                                  :tls-verify-peer tls-verify-peer
-                                 :tls-verify-hostname tls-verify-hostname))))))
+                                 :tls-verify-hostname tls-verify-hostname
+                                 :tls-ca tls-ca))))))
 
 (defmethod make-connection-spec ((raw list))
   (apply #'make-connection-spec% raw))
