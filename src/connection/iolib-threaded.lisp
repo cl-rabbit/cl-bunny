@@ -42,7 +42,9 @@
                          (throw 'stop-connection nil)))))
       (setf (slot-value connection 'state) :opening)
       (setf socket (if (connection-spec-use-tls-p spec)
-                       (make-instance 'iolib.sockets::ssl-socket :protocol :default)
+                       (make-instance 'iolib.sockets::ssl-socket :protocol :default
+                                                                 :verify-location (connection-spec-tls-ca spec)
+                                                                 :verify-peer (connection-spec-tls-verify-peer spec))
                        (iolib:make-socket)))
       (setf (iolib.sockets:socket-option socket :tcp-nodelay) t)
       (iolib:connect (connection-socket connection) (iolib:lookup-hostname (connection-spec-host spec)) :port (connection-spec-port spec) :wait t)
