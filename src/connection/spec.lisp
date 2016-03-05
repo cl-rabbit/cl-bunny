@@ -160,9 +160,9 @@
     (when raw-value
       (let ((value (ignore-errors (parse-integer raw-value))))
         (unless value
-          (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+          (error "Invalid parameter ~:(~s~) value ~s" name raw-value)) ;; TODO: specialize error
         (when (< value 0)
-          (error "Invalid parameter ~a value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
+          (error "Invalid parameter ~:(~s~) value ~s [must be >= 0]" name (assoc-value params name :test #'equal)))  ;; TODO: specialize error
         value))))
 
 (defun parse-boolean (raw-value)
