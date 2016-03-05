@@ -19,7 +19,7 @@
   (heartbeat-interval +heartbeat-interval+ :type (unsigned-byte 32))
   (tls-cert nil :type (or null pathname string (nibbles:octet-vector)))
   (tls-key nil :type (or null pathname string (nibbles:octet-vector)))
-  (tls-ca nil :type (or null pathname string (nibbles:octet-vector)))
+  (tls-ca :default :type (or null (member :default) pathname string (nibbles:octet-vector)))
   (tls-verify-peer t :type boolean)
   (tls-verify-hostname t :type boolean))
 
@@ -153,7 +153,7 @@
 
 (defmethod check-connection-parameters ((params (eql nil)))
   (declare (ignore params))
-  (values +channel-max+ +frame-max+ +heartbeat-interval+ t t))
+  (values +channel-max+ +frame-max+ +heartbeat-interval+ t t :default))
 
 (defun check-uint-parameter (params name)
   (let* ((raw-value (assoc-value params name :test #'string-equal)))
