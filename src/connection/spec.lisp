@@ -170,7 +170,8 @@
     ("t" (values t t))
     ("nil" (values t nil))
     ("true" (values t t))
-    ("false" (values t nil))))
+    ("false" (values t nil))
+    (t (values nil))))
 
 (defun check-boolean-parameter (params name default)
   (let* ((raw-value (assoc-value params name :test #'string-equal)))
@@ -178,7 +179,7 @@
         (multiple-value-bind (parsed value)
             (parse-boolean raw-value)
           (unless parsed
-            (error "Invalid parameter ~:(~a~) value ~s" name raw-value)) ;; TODO: specialize error
+            (error "Invalid boolean parameter ~:(~s~) value ~s" name raw-value)) ;; TODO: specialize error
           value)
       default)))
 
