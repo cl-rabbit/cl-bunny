@@ -3,9 +3,11 @@ CL-BUNNY is a RabbitMQ client. CL-BUNNY is based on [IOLib](https://github.com/s
 **Please use with caution - work in progress, error-handling not so descriptive, API is not always stable**. **Contributions are greatly appreciated!**
 
 ## Installation Notes
-CL-BUNNY as well as some of its dependencies are not included in Quicklisp:
-* [safe-queue](https://github.com/deadtrickster/safe-queue)
-* [cl-events](https://github.com/deadtrickster/cl-events)
+Since March 2016 CL-BUNNY can be installed using Quicklisp
+```lisp
+(ql:quickload :cl-bunny)
+```
+You can also can checkout [releases list](https://github.com/cl-rabbit/cl-bunny/releases)
 
 ## Examples
 #### Foreword
