@@ -7,7 +7,7 @@ Since March 2016 CL-BUNNY can be installed using Quicklisp
 ```lisp
 (ql:quickload :cl-bunny)
 ```
-You can also can checkout [releases list](https://github.com/cl-rabbit/cl-bunny/releases)
+You can also checkout [releases list](https://github.com/cl-rabbit/cl-bunny/releases)
 
 ## Examples
 #### Foreword
