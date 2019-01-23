@@ -12,17 +12,15 @@
         (queue.bind q1 x :routing-key "resize")
 
         (subscribe q1 (lambda (message)
-                        (log:info "[consumer] ~a received a 'resize' message: ~a"
-                                  q1 (message-body-string message))
-                        (attach (queue.bind q2 x :routing-key "watermark")
-                                (lambda (queue)
-                                  (declare (ignore queue))
-                                  (publish x (format nil "~a" (random 15)) :routing-key "watermark")))))
+                        (log:info "[~a][consumer] ~a received a 'resize' message: ~a"
+                                  (bt:current-thread) q1 (message-body-string message))
+                        (queue.bind q2 x :routing-key "watermark")
+                        (publish x (format nil "~a" (random 15)) :routing-key "watermark")))
         (subscribe q2 (lambda (message)
-                        (log:info "[consumer] ~a received a 'watermark' message: ~a"
-                                  q2 (message-body-string message))))
+                        (log:info "[~a][consumer] ~a received a 'watermark' message: ~a"
+                                  (bt:current-thread) q2 (message-body-string message))))
 
-        (log:info "Publishing resize message")
+        (log:info "[~a] Publishing resize message" (bt:current-thread))
         (publish x (format nil "~a" (random 10)) :routing-key "resize")
 
         (log:info "Waiting...")
