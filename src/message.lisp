@@ -5,7 +5,7 @@
                  :initarg :channel
                  :reader message-channel)
    (consumer-tag :type string
-                 :initform nil
+                 :initform ""
                  :initarg :consumer-tag
                  :reader message-consumer-tag)
    (consumer     :type consumer

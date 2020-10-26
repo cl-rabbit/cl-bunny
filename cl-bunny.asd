@@ -6,7 +6,7 @@
 (in-package :cl-bunny.system)
 
 (defsystem :cl-bunny
-  :version "0.4.5"
+  :version "0.4.6"
   :description "Common Lisp RabbitMQ client based on IOLib"
   :maintainer "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :author "Ilya Khaprov <ilya.khaprov@publitechs.com>"
