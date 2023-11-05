@@ -1,7 +1,7 @@
 (in-package :cl-bunny)
 
 (defclass exchange ()
-  ((channel :type channel
+  ((channel :type (or null channel)
             :initform nil
             :initarg :channel
             :reader exchange-channel)
